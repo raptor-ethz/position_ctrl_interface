@@ -53,8 +53,8 @@ std::shared_ptr<System> get_system(Mavsdk &mavsdk) {
 
 // Does Offboard control using NED co-ordinates.
 bool offb_ctrl_ned(mavsdk::Offboard &offboard,
-                   DDSSubscriber<idl_msg::QuadPositionCmdPubSubType,
-                                 cpp_msg::QuadPositionCmd> &cmd_sub) {
+                   DDSSubscriber<idl_msg::QuadVelocityCmdPubSubType,
+                                 cpp_msg::QuadVelocityCmd> &cmd_sub) {
   std::cout << "Starting Offboard velocity control in NED coordinates\n";
 
   // Send it once before starting offboard, otherwise it will be rejected.
@@ -72,6 +72,7 @@ bool offb_ctrl_ned(mavsdk::Offboard &offboard,
   // Create MAVSDK message
   std::cout << "Staying at home position" << std::endl;
   Offboard::PositionNedYaw position_msg{};
+  Offboard::PositionNedYaw velocity_msg{};
 
   // Stay at home position until publisher starts
   position_msg.down_m = -1.5f;
@@ -85,10 +86,10 @@ bool offb_ctrl_ned(mavsdk::Offboard &offboard,
     // Blocks until new data is available
     cmd_sub.listener->wait_for_data();
 
-    position_msg.north_m = sub::pos_cmd.position.x + x_offset;
-    position_msg.east_m = sub::pos_cmd.position.y + y_offset;
+    velocity_msg.north_m = sub::velocity_cmd.velocity.x + x_offset;
+    velocity_msg.east_m = sub::velocity_cmd.velocity.y + y_offset;
     // To account for px4 -z coordinate system (North-East-Down)
-    position_msg.down_m = -sub::pos_cmd.position.z;
+    velocity_msg.down_m = -sub::velocity_cmd.velocity.z;
 
     offboard.set_position_ned(position_msg);
   }
@@ -109,11 +110,11 @@ int main(int argc, char **argv) {
   // Fastdds
 
   // Create participant. Arguments-> Domain id, QOS name
-  DefaultParticipant dp(0, "pos_ctrl_interface");
+  DefaultParticipant dp(0, "velocity_ctrl_interface");
 
   // Create subscriber with msg type
-  DDSSubscriber cmd_sub(idl_msg::QuadPositionCmdPubSubType(), &sub::pos_cmd,
-                        "pos_cmd", dp.participant());
+  DDSSubscriber cmd_sub(idl_msg::QuadVelocityCmdPubSubType(),
+                        &sub::velocity_cmd, "velocity_cmd", dp.participant());
 
   // Intiailize fastdds subscriber
   cmd_sub.init();
