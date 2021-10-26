@@ -1,2 +1,2 @@
 
-add_subdirectory(square_traj)
+# add_subdirectory(square_traj)

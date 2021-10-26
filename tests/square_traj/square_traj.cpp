@@ -8,7 +8,7 @@
 
 int main() {
   // Message
-  Position position;
+  Position position{};
 
   // Create participant. Arguments-> Domain id, QOS name
   DefaultParticipant dp(0, "quare_traj_publisher");
@@ -16,18 +16,33 @@ int main() {
   // Create publisher with msg type
   DDSPublisher position_pub(PositionPubSubType(), "pos_cmd", dp.participant());
 
-  // Create publisher with msg type
-  DDSPublisher position_pub1(PositionPubSubType(), "position",
-                             dp.participant());
+  // Initialize publisher
+  position_pub.init();
 
-  // Initialize publisher with topic name
-  if (position_pub.init()) {
-    for (int i = 0; i < 10; i++) {
-      position.x(i + 1);
-      position_pub.publish(position);
+  // Go to center
+  position.z(1);
+  position_pub.publish(position);
+  // Delay for quad to catch up
+  std::this_thread::sleep_for(std::chrono::seconds(5));
 
-      // Delay for quad to catch up
-      std::this_thread::sleep_for(std::chrono::milliseconds(100));
-    }
-  }
+  position.x(0.5);
+  position_pub.publish(position);
+  // Delay for quad to catch up
+  std::this_thread::sleep_for(std::chrono::seconds(4));
+
+  position.y(0.5);
+  position_pub.publish(position);
+  // Delay for quad to catch up
+  std::this_thread::sleep_for(std::chrono::seconds(4));
+
+  position.x(-0.5);
+  position_pub.publish(position);
+  // Delay for quad to catch up
+  std::this_thread::sleep_for(std::chrono::seconds(4));
+
+  position.x(0);
+  position.y(0);
+  position_pub.publish(position);
+  // Delay for quad to catch up
+  std::this_thread::sleep_for(std::chrono::seconds(4));
 }

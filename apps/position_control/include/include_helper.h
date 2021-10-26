@@ -16,5 +16,4 @@
 // Fastdds
 #include "default_participant.h"
 #include "default_subscriber.h"
-#include "geometry_msgs/msgs/Position.h"
 #include "sub_callback.h"

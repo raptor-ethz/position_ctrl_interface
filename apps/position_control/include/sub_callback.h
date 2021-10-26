@@ -1,16 +1,18 @@
 #pragma once
-#include "PositionPubSubTypes.h"
+#include "QuadPositionCmdPubSubTypes.h"
+#include "quadcopter_msgs/msgs/QuadPositionCmd.h"
 
 // Subscriber data that needs to be accessed in main
 namespace sub {
-Position st;
+cpp_msg::QuadPositionCmd pos_cmd;
 } // namespace sub
 
 inline void DDSSubscriber::SubListener::on_data_available(
     eprosima::fastdds::dds::DataReader *reader) {
   eprosima::fastdds::dds::SampleInfo info;
 
-  if (reader->take_next_sample(&sub::st, &info) == ReturnCode_t::RETCODE_OK) {
+  if (reader->take_next_sample(&sub::pos_cmd, &info) ==
+      ReturnCode_t::RETCODE_OK) {
     if (info.valid_data) {
 
       { // Protection against race condition using mutex

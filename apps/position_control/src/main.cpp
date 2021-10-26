@@ -5,6 +5,12 @@ using std::chrono::milliseconds;
 using std::chrono::seconds;
 using std::this_thread::sleep_for;
 
+/////////////////////////////////////////////////////////////////////////////////
+// Local position offsets
+constexpr static float x_offset = 0.5;
+constexpr static float y_offset = 0.5;
+/////////////////////////////////////////////////////////////////////////////////
+
 void usage(const std::string &bin_name) {
   std::cerr
       << "Usage : " << bin_name << " <connection_url>\n"
@@ -60,27 +66,29 @@ bool offb_ctrl_ned(mavsdk::Offboard &offboard, DDSSubscriber &cmd_sub) {
   }
 
   std::cout << "Offboard started\n";
-  std::cout << "Turn to face East\n";
 
-  // Go up
-  std::cout << "Go up 0.5 m east\n";
+  // Create MAVSDK message
+  std::cout << "Staying at home position" << std::endl;
   Offboard::PositionNedYaw position_msg{};
-  position_msg.down_m = -2.0f;
 
+  // Stay at home position until publisher starts
+  position_msg.down_m = -1.5f;
   offboard.set_position_ned(position_msg);
+  sleep_for(seconds(5));
+
+  std::cout << "Starting external position control" << std::endl;
 
   for (;;) {
 
     // Blocks until new data is available
-    // cmd_sub.listener.wait_for_data();
+    cmd_sub.listener.wait_for_data();
 
-    position_msg.north_m = -sub::st.x();
-    position_msg.east_m = -sub::st.y();
-    position_msg.down_m = -sub::st.z();
+    position_msg.north_m = sub::pos_cmd.position.x + x_offset;
+    position_msg.east_m = sub::pos_cmd.position.y + y_offset;
+    // To account for px4 -z coordinate system (North-East-Down)
+    position_msg.down_m = -sub::pos_cmd.position.z;
 
     offboard.set_position_ned(position_msg);
-
-    sleep_for(seconds(1));
   }
 
   return true;
@@ -102,7 +110,8 @@ int main(int argc, char **argv) {
   DefaultParticipant dp(0, "pos_ctrl_interface");
 
   // Create subscriber with msg type
-  DDSSubscriber cmd_sub(PositionPubSubType(), "pos_cmd", dp.participant());
+  DDSSubscriber cmd_sub(idl_msg::QuadPositionCmdPubSubType(), "pos_cmd",
+                        dp.participant());
 
   // Intiailize fastdds subscriber
   cmd_sub.init();
