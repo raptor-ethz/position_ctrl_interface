@@ -72,12 +72,14 @@ bool offb_ctrl_ned(mavsdk::Offboard &offboard,
   // Create MAVSDK message
   std::cout << "Staying at home position" << std::endl;
   Offboard::PositionNedYaw position_msg{};
-  Offboard::PositionNedYaw velocity_msg{};
+  Offboard::VelocityNedYaw velocity_msg{};
 
   // Stay at home position until publisher starts
   position_msg.down_m = -1.5f;
+  position_msg.north_m = 0.5f;
+  position_msg.north_m = 0.5f;
   offboard.set_position_ned(position_msg);
-  sleep_for(seconds(5));
+  sleep_for(seconds(3));
 
   std::cout << "Starting external position control" << std::endl;
 
@@ -85,13 +87,14 @@ bool offb_ctrl_ned(mavsdk::Offboard &offboard,
 
     // Blocks until new data is available
     cmd_sub.listener->wait_for_data();
+    // std::cout << "received cmd" << sub::velocity_cmd.velocity.x << std::endl;
 
-    velocity_msg.north_m = sub::velocity_cmd.velocity.x + x_offset;
-    velocity_msg.east_m = sub::velocity_cmd.velocity.y + y_offset;
+    velocity_msg.north_m_s = sub::velocity_cmd.velocity.x;
+    velocity_msg.east_m_s = sub::velocity_cmd.velocity.y;
     // To account for px4 -z coordinate system (North-East-Down)
-    velocity_msg.down_m = -sub::velocity_cmd.velocity.z;
+    velocity_msg.down_m_s = -sub::velocity_cmd.velocity.z;
 
-    offboard.set_position_ned(position_msg);
+    offboard.set_velocity_ned(velocity_msg);
   }
 
   return true;
