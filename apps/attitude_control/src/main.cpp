@@ -10,10 +10,6 @@ using std::this_thread::sleep_for;
 constexpr static float x_offset = 0.5;
 constexpr static float y_offset = 0.5;
 
-// Parameters for thrust normalization polynomial
-constexpr static float a = 0.0007849;
-constexpr static float b = 0.045;
-constexpr static float c = 0.2979;
 /////////////////////////////////////////////////////////////////////////////////
 
 void usage(const std::string &bin_name) {
@@ -65,7 +61,7 @@ bool offb_ctrl_attitude(mavsdk::Offboard &offboard,
   // Send it once before starting offboard, otherwise it will be rejected.
 
   Offboard::Attitude attitude_msg{};
-  attitude_msg.thrust_value = 0.3;
+  attitude_msg.thrust_value = 0.2;
   attitude_msg.roll_deg = 0.0;
   attitude_msg.pitch_deg = 0.0;
   attitude_msg.yaw_deg = 0.0;
@@ -79,14 +75,14 @@ bool offb_ctrl_attitude(mavsdk::Offboard &offboard,
 
   std::cout << "Offboard Attitude control started\n";
 
-  // // Create MAVSDK message
-  // std::cout << "Staying at home position" << std::endl;
-  // Offboard::PositionNedYaw position_msg{};
+  // Create MAVSDK message
+  std::cout << "Staying at home position" << std::endl;
+  Offboard::PositionNedYaw position_msg{};
 
-  // // Stay at home position until publisher starts
-  // position_msg.down_m = -1.5f;
-  // offboard.set_position_ned(position_msg);
-  // sleep_for(seconds(5));
+  // Stay at home position until publisher starts
+  position_msg.down_m = -1.5f;
+  offboard.set_position_ned(position_msg);
+  sleep_for(seconds(5));
 
   std::cout << "Starting external position control" << std::endl;
 
@@ -95,11 +91,7 @@ bool offb_ctrl_attitude(mavsdk::Offboard &offboard,
     // Blocks until new data is available
     cmd_sub.listener->wait_for_data();
 
-    // Normalize thrust to [0,1] first
-    const float normalized_thrust =
-        a * pow(sub::attitude_cmd.thrust, 2) + b * sub::attitude_cmd.thrust + c;
-
-    attitude_msg.thrust_value = normalized_thrust;
+    attitude_msg.thrust_value = sub::attitude_cmd.thrust;
     attitude_msg.roll_deg = sub::attitude_cmd.roll;
     attitude_msg.pitch_deg = sub::attitude_cmd.pitch;
     attitude_msg.yaw_deg = sub::attitude_cmd.yaw;
