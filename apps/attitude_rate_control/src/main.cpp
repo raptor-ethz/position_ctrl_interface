@@ -9,6 +9,7 @@ using std::this_thread::sleep_for;
 // Local position offsets
 constexpr static float x_offset = 0.5;
 constexpr static float y_offset = 0.5;
+
 /////////////////////////////////////////////////////////////////////////////////
 
 void usage(const std::string &bin_name) {
@@ -52,12 +53,19 @@ std::shared_ptr<System> get_system(Mavsdk &mavsdk) {
 }
 
 // Does Offboard control using NED co-ordinates.
-bool offb_ctrl_ned(mavsdk::Offboard &offboard, DDSSubscriber &cmd_sub) {
+bool offb_ctrl_attitude(mavsdk::Offboard &offboard,
+                        DDSSubscriber<idl_msg::QuadAttitudeRateCommandPubSubType,
+                                      cpp_msg::QuadAttitudeRateCommand> &cmd_sub) {
   std::cout << "Starting Offboard velocity control in NED coordinates\n";
 
   // Send it once before starting offboard, otherwise it will be rejected.
-  const Offboard::VelocityNedYaw stay{};
-  offboard.set_velocity_ned(stay);
+
+  Offboard::AttitudeRate attitude_rate_msg{};
+  attitude_rate_msg.thrust_value = 0.2;
+  attitude_rate_msg.roll_deg_s = 0.0;
+  attitude_rate_msg.pitch_deg_s = 0.0;
+  attitude_rate_msg.yaw_deg_s = 0.0;
+  offboard.set_attitude_rate(attitude_rate_msg);
 
   Offboard::Result offboard_result = offboard.start();
   if (offboard_result != Offboard::Result::Success) {
@@ -65,22 +73,15 @@ bool offb_ctrl_ned(mavsdk::Offboard &offboard, DDSSubscriber &cmd_sub) {
     return false;
   }
 
-  std::cout << "Offboard started\n";
+  std::cout << "Offboard QuadAttitudeRate control started\n";
 
-  // Create mavsdk messages
+  // Create MAVSDK message
   std::cout << "Staying at home position" << std::endl;
   Offboard::PositionNedYaw position_msg{};
-  Offboard::VelocityNedYaw velocity_msg{};
-
-  // Set velocity
-  velocity_msg.north_m_s = 1.0;
-  velocity_msg.east_m_s = 1.0;
-  velocity_msg.down_m_s = 0.0;
-  velocity_msg.yaw_deg = 10;
 
   // Stay at home position until publisher starts
   position_msg.down_m = -1.5f;
-  offboard.set_position_velocity_ned(position_msg, velocity_msg);
+  offboard.set_position_ned(position_msg);
   sleep_for(seconds(5));
 
   std::cout << "Starting external position control" << std::endl;
@@ -88,16 +89,14 @@ bool offb_ctrl_ned(mavsdk::Offboard &offboard, DDSSubscriber &cmd_sub) {
   for (;;) {
 
     // Blocks until new data is available
-    cmd_sub.listener.wait_for_data();
+    cmd_sub.listener->wait_for_data();
 
-    position_msg.north_m = sub::pos_cmd.position.x + x_offset;
-    position_msg.east_m = sub::pos_cmd.position.y + y_offset;
-    // To account for px4 -z coordinate system (North-East-Down)
-    position_msg.down_m = -sub::pos_cmd.position.z;
+    attitude_rate_msg.thrust_value = sub::attitude_cmd.thrust;
+    attitude_rate_msg.roll_deg_s = sub::attitude_cmd.roll_rate;
+    attitude_rate_msg.pitch_deg_s = sub::attitude_cmd.pitch_rate;
+    attitude_rate_msg.yaw_deg_s = sub::attitude_cmd.yaw_rate;
 
-    offboard.set_position_velocity_ned(position_msg, velocity_msg);
-
-    // sleep_for(seconds(1));
+    offboard.set_attitude_rate(attitude_rate_msg);
   }
 
   return true;
@@ -116,11 +115,11 @@ int main(int argc, char **argv) {
   // Fastdds
 
   // Create participant. Arguments-> Domain id, QOS name
-  DefaultParticipant dp(0, "pos_ctrl_interface");
+  DefaultParticipant dp(0, "attitude_rate_ctrl_interface");
 
   // Create subscriber with msg type
-  DDSSubscriber cmd_sub(idl_msg::QuadPositionCmdPubSubType(), "pos_cmd",
-                        dp.participant());
+  DDSSubscriber cmd_sub(idl_msg::QuadAttitudeRateCommandPubSubType(),
+                        &sub::attitude_cmd, "attitude_rate_cmd", dp.participant());
 
   // Intiailize fastdds subscriber
   cmd_sub.init();
@@ -149,16 +148,16 @@ int main(int argc, char **argv) {
   }
   std::cout << "Armed\n";
 
-  const auto takeoff_result = action.takeoff();
-  if (takeoff_result != Action::Result::Success) {
-    std::cerr << "Takeoff failed: " << takeoff_result << '\n';
-    return 1;
-  }
+  // const auto takeoff_result = action.takeoff();
+  // if (takeoff_result != Action::Result::Success) {
+  //   std::cerr << "Takeoff failed: " << takeoff_result << '\n';
+  //   return 1;
+  // }
 
-  sleep_for(seconds(8));
+  // sleep_for(seconds(8));
 
   //  using local NED co-ordinates
-  if (!offb_ctrl_ned(offboard, cmd_sub)) {
+  if (!offb_ctrl_attitude(offboard, cmd_sub)) {
     return 1;
   }
 

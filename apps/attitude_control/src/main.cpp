@@ -54,8 +54,8 @@ std::shared_ptr<System> get_system(Mavsdk &mavsdk) {
 
 // Does Offboard control using NED co-ordinates.
 bool offb_ctrl_attitude(mavsdk::Offboard &offboard,
-                        DDSSubscriber<idl_msg::AttitudeCommandPubSubType,
-                                      cpp_msg::AttitudeCommand> &cmd_sub) {
+                        DDSSubscriber<idl_msg::QuadAttitudeCommandPubSubType,
+                                      cpp_msg::QuadAttitudeCommand> &cmd_sub) {
   std::cout << "Starting Offboard velocity control in NED coordinates\n";
 
   // Send it once before starting offboard, otherwise it will be rejected.
@@ -118,7 +118,7 @@ int main(int argc, char **argv) {
   DefaultParticipant dp(0, "attitude_ctrl_interface");
 
   // Create subscriber with msg type
-  DDSSubscriber cmd_sub(idl_msg::AttitudeCommandPubSubType(),
+  DDSSubscriber cmd_sub(idl_msg::QuadAttitudeCommandPubSubType(),
                         &sub::attitude_cmd, "attitude_cmd", dp.participant());
 
   // Intiailize fastdds subscriber

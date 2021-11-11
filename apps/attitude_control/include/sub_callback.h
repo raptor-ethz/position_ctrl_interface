@@ -1,8 +1,8 @@
 #pragma once
-#include "AttitudeCommandPubSubTypes.h"
-#include "quadcopter_msgs/msgs/AttitudeCommand.h"
+#include "QuadAttitudeCommandPubSubTypes.h"
+#include "quadcopter_msgs/msgs/QuadAttitudeCommand.h"
 
 // Subscriber data that needs to be accessed in main
 namespace sub {
-cpp_msg::AttitudeCommand attitude_cmd{};
+cpp_msg::QuadAttitudeCommand attitude_cmd{};
 } // namespace sub
