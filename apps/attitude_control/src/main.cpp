@@ -59,13 +59,10 @@ bool offb_ctrl_attitude(mavsdk::Offboard &offboard,
   std::cout << "Starting Offboard velocity control in NED coordinates\n";
 
   // Send it once before starting offboard, otherwise it will be rejected.
-
-  Offboard::Attitude attitude_msg{};
-  attitude_msg.thrust_value = 0.2;
-  attitude_msg.roll_deg = 0.0;
-  attitude_msg.pitch_deg = 0.0;
-  attitude_msg.yaw_deg = 0.0;
-  offboard.set_attitude(attitude_msg);
+  
+   // Send it once before starting offboard, otherwise it will be rejected.
+  const Offboard::VelocityNedYaw stay{};
+  offboard.set_velocity_ned(stay);
 
   Offboard::Result offboard_result = offboard.start();
   if (offboard_result != Offboard::Result::Success) {
@@ -74,6 +71,7 @@ bool offb_ctrl_attitude(mavsdk::Offboard &offboard,
   }
 
   std::cout << "Offboard Attitude control started\n";
+  Offboard::Attitude attitude_msg{};
 
   // Create MAVSDK message
   std::cout << "Staying at home position" << std::endl;
