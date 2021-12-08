@@ -76,12 +76,11 @@ bool offb_ctrl_ned(mavsdk::Offboard &offboard,
   // Stay at home position until publisher starts
   position_msg.down_m = -1.5f;
   offboard.set_position_ned(position_msg);
-  sleep_for(seconds(5));
+  sleep_for(seconds(2));
 
   std::cout << "Starting external position control" << std::endl;
 
   for (;;) {
-
     // Blocks until new data is available
     cmd_sub.listener->wait_for_data();
 
@@ -89,6 +88,10 @@ bool offb_ctrl_ned(mavsdk::Offboard &offboard,
     position_msg.east_m = sub::pos_cmd.position.y + y_offset;
     // To account for px4 -z coordinate system (North-East-Down)
     position_msg.down_m = -sub::pos_cmd.position.z;
+
+    // yaw
+    // To account for px4 -z coordinate system (North-East-Down)
+    position_msg.yaw_deg = -sub::pos_cmd.yaw_angle;
 
     offboard.set_position_ned(position_msg);
   }
