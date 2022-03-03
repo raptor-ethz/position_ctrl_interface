@@ -14,6 +14,6 @@
 #include <mavsdk/plugins/telemetry/telemetry.h>
 
 // Fastdds
-#include "default_participant.h"
-#include "default_subscriber.h"
+#include "domain_participant.h"
+#include "subscriber.h"
 #include "sub_callback.h"
