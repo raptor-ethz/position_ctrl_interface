@@ -11,10 +11,6 @@ comm_lib
 
 # Third party dependencies
 target_link_libraries(pos_ctrl_interface PRIVATE
-MAVSDK::mavsdk_action
-MAVSDK::mavsdk_offboard
-MAVSDK::mavsdk_telemetry
-MAVSDK::mavsdk_mocap
 MAVSDK::mavsdk
 fastcdr 
 fastrtps
