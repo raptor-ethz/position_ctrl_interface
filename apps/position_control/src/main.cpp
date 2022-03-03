@@ -126,7 +126,7 @@ int main(int argc, char **argv) {
       Offboard::PositionNedYaw position_msg{};
       position_msg.down_m = -1.5f;
       offboard.set_position_ned(position_msg);
-      sleep_for(milliseconds(100));
+      //sleep_for(milliseconds(100));
 
       while(true){
         // Blocks until new data is available
