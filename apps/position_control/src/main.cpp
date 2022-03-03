@@ -51,54 +51,6 @@ std::shared_ptr<System> get_system(Mavsdk &mavsdk) {
   return fut.get();
 }
 
-// Does Offboard control using NED co-ordinates.
-bool offb_ctrl_ned(mavsdk::Offboard &offboard,
-                   DDSSubscriber<idl_msg::QuadPositionCmdPubSubType,
-                                 cpp_msg::QuadPositionCmd> &cmd_sub) {
-  std::cout << "Starting Offboard velocity control in NED coordinates\n";
-
-  // Send it once before starting offboard, otherwise it will be rejected.
-  const Offboard::VelocityNedYaw stay{};
-  offboard.set_velocity_ned(stay);
-
-  Offboard::Result offboard_result = offboard.start();
-  if (offboard_result != Offboard::Result::Success) {
-    std::cerr << "Offboard start failed: " << offboard_result << '\n';
-    return false;
-  }
-
-  std::cout << "Offboard started\n";
-
-  // Create MAVSDK message
-  std::cout << "Staying at home position" << std::endl;
-  Offboard::PositionNedYaw position_msg{};
-
-  // Stay at home position until publisher starts
-  position_msg.down_m = -1.5f;
-  offboard.set_position_ned(position_msg);
-  sleep_for(seconds(2));
-
-  std::cout << "Starting external position control" << std::endl;
-
-  for (;;) {
-    // Blocks until new data is available
-    cmd_sub.listener->wait_for_data();
-
-    position_msg.north_m = sub::pos_cmd.position.x + x_offset;
-    position_msg.east_m = sub::pos_cmd.position.y + y_offset;
-    // To account for px4 -z coordinate system (North-East-Down)
-    position_msg.down_m = -sub::pos_cmd.position.z;
-
-    // yaw
-    // To account for px4 -z coordinate system (North-East-Down)
-    position_msg.yaw_deg = -sub::pos_cmd.yaw_angle;
-
-    offboard.set_position_ned(position_msg);
-  }
-
-  return true;
-}
-
 int main(int argc, char **argv) {
   if (argc != 2) {
     usage(argv[0]);
@@ -140,41 +92,60 @@ int main(int argc, char **argv) {
   auto telemetry = Telemetry{system};
   std::cout << "System is ready\n";
 
-  const auto arm_result = action.arm();
-  if (arm_result != Action::Result::Success) {
-    std::cerr << "Arming failed: " << arm_result << '\n';
-    return 1;
+  // pub::error_msg.id = "THIS IS A TEST ERROR MESSAGE";
+  // px4_error_pub.publish(pub::error_msg);
+  while(true){
+    px4_cmd_sub.listener->wait_for_data();
+    if(sub::px4_cmd.id=="arm"){
+      const auto arm_result = action.arm();
+      // pub::error_msg.id = Action::Result::Success;
+      // px4_error_pub.publish(pub::error_msg);
+    }
+    if(sub::px4_cmd.id=="disarm"){
+      const auto disarm_result = action.disarm();
+      // pub::error_msg.id = Action::Result::Success;
+      // px4_error_pub.publish(pub::error_msg);
+    }
+    if(sub::px4_cmd.id=="takeoff"){
+      const auto takeoff_result = action.takeoff();
+      // pub::error_msg.id = Action::Result::Success;
+      // px4_error_pub.publish(pub::error_msg);
+    }
+    if(sub::px4_cmd.id=="land"){
+      const auto land_result = action.land();
+      // pub::error_msg.id = Action::Result::Success;
+      // px4_error_pub.publish(pub::error_msg);
+    }
+    if(sub::px4_cmd.id=="offboard"){
+
+       // Send it once before starting offboard, otherwise it will be rejected.
+      const Offboard::PositionNedYaw stay{};
+      offboard.set_position_ned(stay);
+
+      Offboard::Result offboard_result = offboard.start();
+      Offboard::PositionNedYaw position_msg{};
+      position_msg.down_m = -1.5f;
+      offboard.set_position_ned(position_msg);
+      sleep_for(milliseconds(100));
+
+      while(true){
+        // Blocks until new data is available
+        pos_cmd_sub.listener->wait_for_data();
+
+        if(sub::pos_cmd.header.id=="break"){
+          break;
+        }
+        position_msg.north_m = sub::pos_cmd.position.x + x_offset;
+        position_msg.east_m = sub::pos_cmd.position.y + y_offset;
+        position_msg.down_m = -sub::pos_cmd.position.z; // To account for px4 -z coordinate system (North-East-Down)
+        position_msg.yaw_deg = -sub::pos_cmd.yaw_angle;
+
+        offboard.set_position_ned(position_msg);
+        
+      }
+      offboard_result = offboard.stop();
+    }
   }
-  std::cout << "Armed\n";
-
-  const auto takeoff_result = action.takeoff();
-  if (takeoff_result != Action::Result::Success) {
-    std::cerr << "Takeoff failed: " << takeoff_result << '\n';
-    return 1;
-  }
-
-  sleep_for(seconds(8));
-
-  //  using local NED co-ordinates
-  if (!offb_ctrl_ned(offboard, pos_cmd_sub)) {
-    return 1;
-  }
-
-  const auto land_result = action.land();
-  if (land_result != Action::Result::Success) {
-    std::cerr << "Landing failed: " << land_result << '\n';
-    return 1;
-  }
-
-  // Check if vehicle is still in air
-  while (telemetry.in_air()) {
-    std::cout << "Vehicle is landing...\n";
-    sleep_for(seconds(1));
-  }
-  std::cout << "Landed!\n";
-
-  // We are relying on auto-disarming but let's keep watching the telemetry for
-  // a bit longer.
   sleep_for(seconds(3));
   std::cout << "Finished...\n";
 
