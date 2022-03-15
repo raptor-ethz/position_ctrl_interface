@@ -68,12 +68,13 @@ int main(int argc, char **argv) {
 
   // Create subscriber with msg type
   DDSSubscriber pos_cmd_sub(idl_msg::QuadPositionCmdPubSubType(), &sub::pos_cmd,
-                        "pos_cmd", dp.participant());
+                            "pos_cmd", dp.participant());
 
   DDSSubscriber px4_cmd_sub(idl_msg::HeaderPubSubType(), &sub::px4_cmd,
-                        "px4_commands", dp.participant());
+                            "px4_commands", dp.participant());
 
-  DDSPublisher px4_error_pub(idl_msg::HeaderPubSubType(),"px4_error_msgs", dp.participant());
+  DDSPublisher px4_status_pub(idl_msg::HeaderPubSubType(), "px4_status_msgs",
+                              dp.participant());
   /////////////////////////////////////////////////////////////////////////////////
 
   if (connection_result != ConnectionResult::Success) {
@@ -93,32 +94,84 @@ int main(int argc, char **argv) {
   std::cout << "System is ready\n";
 
   // pub::error_msg.id = "THIS IS A TEST ERROR MESSAGE";
-  // px4_error_pub.publish(pub::error_msg);
-  while(true){
-    px4_cmd_sub.listener->wait_for_data();
-    if(sub::px4_cmd.id=="arm"){
-      const auto arm_result = action.arm();
-      // pub::error_msg.id = Action::Result::Success;
-      // px4_error_pub.publish(pub::error_msg);
-    }
-    if(sub::px4_cmd.id=="disarm"){
-      const auto disarm_result = action.disarm();
-      // pub::error_msg.id = Action::Result::Success;
-      // px4_error_pub.publish(pub::error_msg);
-    }
-    if(sub::px4_cmd.id=="takeoff"){
-      const auto takeoff_result = action.takeoff();
-      // pub::error_msg.id = Action::Result::Success;
-      // px4_error_pub.publish(pub::error_msg);
-    }
-    if(sub::px4_cmd.id=="land"){
-      const auto land_result = action.land();
-      // pub::error_msg.id = Action::Result::Success;
-      // px4_error_pub.publish(pub::error_msg);
-    }
-    if(sub::px4_cmd.id=="offboard"){
+  // px4_status_pub.publish(pub::error_msg);
 
-       // Send it once before starting offboard, otherwise it will be rejected.
+  // test for health and battery
+  //  while (true) {
+  //    int battery_percent = (int)(telemetry.battery().remaining_percent *
+  //    100.0);
+
+  //   std::string local_pos;
+  //   if (telemetry.health().is_local_position_ok) {
+  //     local_pos = "ok";
+  //   } else {
+  //     local_pos = "not ok";
+  //   }
+
+  //   std::string kill_switch;
+  //   if (telemetry.health().is_armable) {
+  //     kill_switch = "disengaged";
+  //   } else {
+  //     kill_switch = "engaged";
+  //   }
+
+  //   std::string health_info =
+  //       "local position is " + local_pos + " and kill switch is " +
+  //       kill_switch;
+  //   std::cout << "battery: " << battery_percent << std::endl;
+  // }
+
+  while (true) {
+    px4_cmd_sub.listener->wait_for_data();
+    if (sub::px4_cmd.id == "info") {
+      int battery_percent =
+          (int)(telemetry.battery().remaining_percent * 100.0);
+      std::string local_pos;
+      if (telemetry.health().is_local_position_ok) {
+        local_pos = "ok";
+      } else {
+        local_pos = "not ok";
+      }
+
+      std::string kill_switch;
+      if (telemetry.health().is_armable) {
+        kill_switch = "disengaged";
+      } else {
+        kill_switch = "engaged";
+      }
+
+      pub::error_msg.id = "local position is " + local_pos +
+                          " and kill switch is " + kill_switch;
+      pub::error_msg.timestamp = battery_percent;
+      px4_status_pub.publish(pub::error_msg);
+    }
+    if (sub::px4_cmd.id == "arm") {
+      const auto arm_result = action.arm();
+      std::cout << arm_result << std::endl;
+      // pub::error_msg.id = Action::Result::Success;
+      // px4_status_pub.publish(pub::error_msg);
+    }
+    if (sub::px4_cmd.id == "disarm") {
+      const auto disarm_result = action.disarm();
+      std::cout << disarm_result << std::endl;
+      // pub::error_msg.id = Action::Result::Success;
+      // px4_status_pub.publish(pub::error_msg);
+    }
+    if (sub::px4_cmd.id == "takeoff") {
+      const auto takeoff_result = action.takeoff();
+      std::cout << takeoff_result << std::endl;
+      // pub::error_msg.id = Action::Result::Success;
+      // px4_status_pub.publish(pub::error_msg);
+    }
+    if (sub::px4_cmd.id == "land") {
+      const auto land_result = action.land();
+      std::cout << land_result << std::endl;
+      // pub::error_msg.id = Action::Result::Success;
+      // px4_status_pub.publish(pub::error_msg);
+    }
+    if (sub::px4_cmd.id == "offboard") {
+
+      // Send it once before starting offboard, otherwise it will be rejected.
       const Offboard::PositionNedYaw stay{};
       offboard.set_position_ned(stay);
 
@@ -126,28 +179,26 @@ int main(int argc, char **argv) {
       Offboard::PositionNedYaw position_msg{};
       position_msg.down_m = -1.5f;
       offboard.set_position_ned(position_msg);
-      //sleep_for(milliseconds(100));
+      // sleep_for(milliseconds(100));
 
-      while(true){
+      while (true) {
         // Blocks until new data is available
         pos_cmd_sub.listener->wait_for_data();
 
-        if(sub::pos_cmd.header.id=="break"){
+        if (sub::pos_cmd.header.id == "break") {
           break;
         }
         position_msg.north_m = sub::pos_cmd.position.x + x_offset;
         position_msg.east_m = sub::pos_cmd.position.y + y_offset;
-        position_msg.down_m = -sub::pos_cmd.position.z; // To account for px4 -z coordinate system (North-East-Down)
+        position_msg.down_m =
+            -sub::pos_cmd.position.z; // To account for px4 -z coordinate system
+                                      // (North-East-Down)
         position_msg.yaw_deg = -sub::pos_cmd.yaw_angle;
 
         offboard.set_position_ned(position_msg);
-        
       }
       offboard_result = offboard.stop();
     }
   }
-  sleep_for(seconds(3));
-  std::cout << "Finished...\n";
-
   return 0;
 }
