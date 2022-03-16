@@ -123,7 +123,7 @@ int main(int argc, char **argv) {
 
   while (true) {
     px4_cmd_sub.listener->wait_for_data();
-    if (sub::px4_cmd.id == "info") {
+    if (sub::px4_cmd.id == "status") {
       long battery_percent =
           (long)(telemetry.battery().remaining_percent * 100.0);
       std::string local_pos;
@@ -134,10 +134,7 @@ int main(int argc, char **argv) {
       if (telemetry.health().is_armable) {
         battery_percent += 10000;
       }
-      pub::error_msg.id = "Quadcopter Status";
-
-      //"local position is " + local_pos +
-      //                   " and kill switch is " + kill_switch;
+      pub::error_msg.id = "Status";
       std::cout << battery_percent << std::endl;
       pub::error_msg.timestamp = battery_percent;
       px4_status_pub.publish(pub::error_msg);
