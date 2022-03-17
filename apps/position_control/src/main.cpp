@@ -134,7 +134,7 @@ int main(int argc, char **argv) {
       if (telemetry.health().is_armable) {
         battery_percent += 10000;
       }
-      pub::error_msg.id = "Status";
+      pub::error_msg.id = "status";
       std::cout << battery_percent << std::endl;
       pub::error_msg.timestamp = battery_percent;
       px4_status_pub.publish(pub::error_msg);
@@ -142,28 +142,28 @@ int main(int argc, char **argv) {
     if (sub::px4_cmd.id == "arm") {
       const auto arm_result = action.arm();
       // std::cout << arm_result << std::endl;
-      pub::error_msg.id = "Arm Result";
+      pub::error_msg.id = "arm result";
       pub::error_msg.timestamp = (int)arm_result;
       px4_status_pub.publish(pub::error_msg);
     }
     if (sub::px4_cmd.id == "disarm") {
       const auto disarm_result = action.disarm();
       // std::cout << disarm_result << std::endl;
-      pub::error_msg.id = "Disarm Result";
+      pub::error_msg.id = "disarm result";
       pub::error_msg.timestamp = (int)disarm_result;
       px4_status_pub.publish(pub::error_msg);
     }
     if (sub::px4_cmd.id == "takeoff") {
       const auto takeoff_result = action.takeoff();
       // std::cout << takeoff_result << std::endl;
-      pub::error_msg.id = "Takeoff Result";
+      pub::error_msg.id = "takeoff result";
       pub::error_msg.timestamp = (int)takeoff_result;
       px4_status_pub.publish(pub::error_msg);
     }
     if (sub::px4_cmd.id == "land") {
       const auto land_result = action.land();
       // std::cout << land_result << std::endl;
-      pub::error_msg.id = "Land Result";
+      pub::error_msg.id = "land result";
       pub::error_msg.timestamp = (int)land_result;
       px4_status_pub.publish(pub::error_msg);
     }
