@@ -8,7 +8,7 @@ You will need the following dependencies installed on your system:
 - [eProsima FastDDS](https://fast-dds.docs.eprosima.com/en/latest/installation/binaries/binaries_linux.html)
 - [MAVSDK](https://mavsdk.mavlink.io/main/en/cpp/guide/installation.html)
 
-In addition, you will also need a telemetry radio (untested) or an Xbee to communicate with the PiHawk 4 flight controller on the drone. 
+In addition, you will also need a telemetry radio (untested) or an Xbee to communicate with the PixHawk 4 flight controller on the drone. 
 
 Once all dependencies are installed, you can build the project using cmake.
 
