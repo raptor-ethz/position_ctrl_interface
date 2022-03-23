@@ -123,6 +123,7 @@ int main(int argc, char **argv) {
 
   while (true) {
     px4_cmd_sub.listener->wait_for_data();
+<<<<<<< HEAD
     if (sub::px4_cmd.id == "info") {
       // long battery_percent =
       //     (long)(telemetry.battery().remaining_percent * 100.0);
@@ -169,6 +170,51 @@ int main(int argc, char **argv) {
       // pub::error_msg.id = "Land Result";
       // pub::error_msg.timestamp = (int)land_result;
       // px4_status_pub.publish(pub::error_msg);
+=======
+    if (sub::px4_cmd.id == "status") {
+      long battery_percent =
+          (long)(telemetry.battery().remaining_percent * 100.0);
+      std::string local_pos;
+
+      if (telemetry.health().is_local_position_ok) {
+        battery_percent += 1000;
+      }
+      if (telemetry.health().is_armable) {
+        battery_percent += 10000;
+      }
+      pub::error_msg.id = "status";
+      std::cout << battery_percent << std::endl;
+      pub::error_msg.timestamp = battery_percent;
+      px4_status_pub.publish(pub::error_msg);
+    }
+    if (sub::px4_cmd.id == "arm") {
+      const auto arm_result = action.arm();
+      // std::cout << arm_result << std::endl;
+      pub::error_msg.id = "arm result";
+      pub::error_msg.timestamp = (int)arm_result;
+      px4_status_pub.publish(pub::error_msg);
+    }
+    if (sub::px4_cmd.id == "disarm") {
+      const auto disarm_result = action.disarm();
+      // std::cout << disarm_result << std::endl;
+      pub::error_msg.id = "disarm result";
+      pub::error_msg.timestamp = (int)disarm_result;
+      px4_status_pub.publish(pub::error_msg);
+    }
+    if (sub::px4_cmd.id == "takeoff") {
+      const auto takeoff_result = action.takeoff();
+      // std::cout << takeoff_result << std::endl;
+      pub::error_msg.id = "takeoff result";
+      pub::error_msg.timestamp = (int)takeoff_result;
+      px4_status_pub.publish(pub::error_msg);
+    }
+    if (sub::px4_cmd.id == "land") {
+      const auto land_result = action.land();
+      // std::cout << land_result << std::endl;
+      pub::error_msg.id = "land result";
+      pub::error_msg.timestamp = (int)land_result;
+      px4_status_pub.publish(pub::error_msg);
+>>>>>>> a1bfb3176438064fee3d5603e7fab2e77f7f8954
     }
     if (sub::px4_cmd.id == "offboard") {
 
