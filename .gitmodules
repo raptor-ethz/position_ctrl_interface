@@ -1,3 +1,0 @@
-[submodule "communication_lib"]
-	path = communication_lib
-	url = https://github.com/raptor-ethz/communication_lib.git
