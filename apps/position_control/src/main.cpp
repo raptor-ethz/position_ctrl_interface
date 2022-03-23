@@ -67,14 +67,14 @@ int main(int argc, char **argv) {
   DefaultParticipant dp(0, "pos_ctrl_interface");
 
   // Create subscriber with msg type
-  DDSSubscriber pos_cmd_sub(idl_msg::QuadPositionCmdPubSubType(), &sub::pos_cmd,
+  DDSSubscriber pos_cmd_sub(idl_msg::PosCmd_msgPubSubType(), &sub::pos_cmd,
                             "pos_cmd", dp.participant());
 
-  DDSSubscriber px4_cmd_sub(idl_msg::HeaderPubSubType(), &sub::px4_cmd,
+  DDSSubscriber px4_cmd_sub(idl_msg::Header_msgPubSubType(), &sub::px4_cmd,
                             "px4_commands", dp.participant());
 
-  DDSPublisher px4_status_pub(idl_msg::HeaderPubSubType(), "px4_status_msgs",
-                              dp.participant());
+  DDSPublisher px4_status_pub(idl_msg::Header_msgPubSubType(),
+                              "px4_status_msgs", dp.participant());
   /////////////////////////////////////////////////////////////////////////////////
 
   if (connection_result != ConnectionResult::Success) {
