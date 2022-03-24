@@ -1,16 +1,23 @@
 #pragma once
 
+/* subscribers */
+
 #include "QuadPosCmd_msg.h"
 #include "QuadPosCmd_msgPubSubTypes.h"
 
-#include "Header_msg.h"
-#include "Header_msgPubSubTypes.h"
-// Subscriber data that needs to be accessed in main
+#include "QuadAction_msg.h"
+#include "QuadAction_msgPubSubTypes.h"
+
 namespace sub {
 cpp_msg::QuadPosCmd_msg pos_cmd;
-cpp_msg::Header_msg px4_cmd;
+cpp_msg::QuadAction_msg action_cmd;
 } // namespace sub
 
+/* publishers */
+
+#include "QuadStatus_msg.h"
+#include "QuadStatus_msgPubSubTypes.h"
+
 namespace pub {
-cpp_msg::Header_msg error_msg;
+cpp_msg::QuadStatus_msg status_msg;
 }

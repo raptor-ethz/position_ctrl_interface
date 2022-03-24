@@ -1,4 +1,7 @@
+// include dependencies
 #include "include_helper.h"
+// include MAVSDK helper functions
+#include "MAVSDK_helper.h"
 
 using namespace mavsdk;
 using std::chrono::milliseconds;
@@ -10,46 +13,6 @@ using std::this_thread::sleep_for;
 constexpr static float x_offset = 0.5;
 constexpr static float y_offset = 0.5;
 /////////////////////////////////////////////////////////////////////////////////
-
-void usage(const std::string &bin_name) {
-  std::cerr
-      << "Usage : " << bin_name << " <connection_url>\n"
-      << "Connection URL format should be :\n"
-      << " For TCP : tcp://[server_host][:server_port]\n"
-      << " For UDP : udp://[bind_host][:bind_port]\n"
-      << " For Serial : serial:///path/to/serial/dev[:baudrate]\n"
-      << "For example, to connect to the simulator use URL: udp://:14540\n";
-}
-
-std::shared_ptr<System> get_system(Mavsdk &mavsdk) {
-  std::cout << "Waiting to discover system...\n";
-  auto prom = std::promise<std::shared_ptr<System>>{};
-  auto fut = prom.get_future();
-
-  // We wait for new systems to be discovered, once we find one that has an
-  // autopilot, we decide to use it.
-  mavsdk.subscribe_on_new_system([&mavsdk, &prom]() {
-    auto system = mavsdk.systems().back();
-
-    if (system->has_autopilot()) {
-      std::cout << "Discovered autopilot\n";
-
-      // Unsubscribe again as we only want to find one system.
-      mavsdk.subscribe_on_new_system(nullptr);
-      prom.set_value(system);
-    }
-  });
-
-  // We usually receive heartbeats at 1Hz, therefore we should find a
-  // system after around 3 seconds max, surely.
-  if (fut.wait_for(seconds(3)) == std::future_status::timeout) {
-    std::cerr << "No autopilot found.\n";
-    return {};
-  }
-
-  // Get discovered system now.
-  return fut.get();
-}
 
 int main(int argc, char **argv) {
   if (argc != 2) {
@@ -67,14 +30,15 @@ int main(int argc, char **argv) {
   DefaultParticipant dp(0, "pos_ctrl_interface");
 
   // Create subscriber with msg type
-  DDSSubscriber pos_cmd_sub(idl_msg::PosCmd_msgPubSubType(), &sub::pos_cmd,
+  DDSSubscriber pos_cmd_sub(idl_msg::QuadPosCmd_msgPubSubType(), &sub::pos_cmd,
                             "pos_cmd", dp.participant());
 
-  DDSSubscriber px4_cmd_sub(idl_msg::Header_msgPubSubType(), &sub::px4_cmd,
-                            "px4_commands", dp.participant());
+  DDSSubscriber action_cmd_sub(idl_msg::QuadAction_msgPubSubType(),
+                               &sub::action_cmd, "px4_commands",
+                               dp.participant());
 
-  DDSPublisher px4_status_pub(idl_msg::Header_msgPubSubType(),
-                              "px4_status_msgs", dp.participant());
+  DDSPublisher status_pub(idl_msg::QuadStatus_msgPubSubType(),
+                          "px4_status_msgs", dp.participant());
   /////////////////////////////////////////////////////////////////////////////////
 
   if (connection_result != ConnectionResult::Success) {
@@ -122,55 +86,47 @@ int main(int argc, char **argv) {
   // }
 
   while (true) {
-    px4_cmd_sub.listener->wait_for_data();
-    if (sub::px4_cmd.id == "info") {
-      // long battery_percent =
-      //     (long)(telemetry.battery().remaining_percent * 100.0);
-      // std::string local_pos;
+    action_cmd_sub.listener->wait_for_data();
+    if (sub::action_cmd.action == Action_cmd::status) {
+      pub::status_msg.battery =
+          (int)(telemetry.battery().remaining_percent * 100.0);
 
-      // if (telemetry.health().is_local_position_ok) {
-      //   battery_percent += 1000;
-      // }
-      // if (telemetry.health().is_armable) {
-      //   battery_percent += 10000;
-      // }
-      // pub::error_msg.id = "Quadcopter Status";
+      pub::status_msg.local_position_ok =
+          telemetry.health().is_local_position_ok;
 
-      // //"local position is " + local_pos +
-      // //                   " and kill switch is " + kill_switch;
-      // std::cout << battery_percent << std::endl;
-      // pub::error_msg.timestamp = battery_percent;
-      // px4_status_pub.publish(pub::error_msg);
+      pub::status_msg.armable = telemetry.health().is_armable;
+
+      status_pub.publish(pub::status_msg);
     }
-    if (sub::px4_cmd.id == "arm") {
+    if (sub::action_cmd.action == Action_cmd::arm) {
       const auto arm_result = action.arm();
       std::cout << arm_result << std::endl;
       // pub::error_msg.id = "Arm Result";
       // pub::error_msg.timestamp = (int)arm_result;
       // px4_status_pub.publish(pub::error_msg);
     }
-    if (sub::px4_cmd.id == "disarm") {
+    if (sub::action_cmd.action == Action_cmd::disarm) {
       const auto disarm_result = action.disarm();
       std::cout << disarm_result << std::endl;
       // pub::error_msg.id = "Disarm Result";
       // pub::error_msg.timestamp = (int)disarm_result;
       // px4_status_pub.publish(pub::error_msg);
     }
-    if (sub::px4_cmd.id == "takeoff") {
+    if (sub::action_cmd.action == Action_cmd::takeoff) {
       const auto takeoff_result = action.takeoff();
       std::cout << takeoff_result << std::endl;
       // pub::error_msg.id = "Takeoff Result";
       // pub::error_msg.timestamp = (int)takeoff_result;
       // px4_status_pub.publish(pub::error_msg);
     }
-    if (sub::px4_cmd.id == "land") {
+    if (sub::action_cmd.action == Action_cmd::land) {
       const auto land_result = action.land();
       std::cout << land_result << std::endl;
       // pub::error_msg.id = "Land Result";
       // pub::error_msg.timestamp = (int)land_result;
       // px4_status_pub.publish(pub::error_msg);
     }
-    if (sub::px4_cmd.id == "offboard") {
+    if (sub::action_cmd.action == Action_cmd::offboard) {
 
       // Send it once before starting offboard, otherwise it will be rejected.
       const Offboard::PositionNedYaw stay{};
@@ -186,7 +142,7 @@ int main(int argc, char **argv) {
         // Blocks until new data is available
         pos_cmd_sub.listener->wait_for_data();
 
-        if (sub::pos_cmd.header.id == "break") {
+        if (sub::pos_cmd.header.description == "break") {
           break;
         }
         position_msg.north_m = sub::pos_cmd.position.x + x_offset;
