@@ -21,6 +21,7 @@ void usage(const std::string &bin_name) {
       << "For example, to connect to the simulator use URL: udp://:14540\n";
 }
 
+// Connects to a MAVSDK system
 std::shared_ptr<System> get_system(Mavsdk &mavsdk) {
   std::cout << "Waiting to discover system...\n";
   auto prom = std::promise<std::shared_ptr<System>>{};
@@ -173,7 +174,8 @@ int main(int argc, char **argv) {
     if (sub::px4_cmd.id == "offboard") {
 
       // Send it once before starting offboard, otherwise it will be rejected.
-      const Offboard::PositionNedYaw stay{};
+      Offboard::PositionNedYaw stay{};
+      stay.down_m = -1.5f;
       offboard.set_position_ned(stay);
 
       Offboard::Result offboard_result = offboard.start();
