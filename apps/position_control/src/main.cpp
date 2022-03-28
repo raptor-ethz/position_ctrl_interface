@@ -104,66 +104,66 @@ int main(int argc, char **argv) {
   while (true) {
     action_cmd_sub.listener->wait_for_data();
     switch (sub::action_cmd.action) {
-    case Action_cmd::status:
+    case Action_cmd::act_status: {
       pub::feedback.status.battery =
           (int)(telemetry.battery().remaining_percent * 100.0);
       pub::feedback.status.local_position_ok =
           telemetry.health().is_local_position_ok;
       pub::feedback.status.armable = telemetry.health().is_armable;
       feedback_pub.publish(pub::feedback);
-      break;
+    } break;
 
-    case Action_cmd::arm:
+    case Action_cmd::act_arm: {
       const auto arm_result = action.arm();
       std::cout << arm_result << std::endl;
-      pub::feedback.result = FeedbackType::arm;
+      pub::feedback.feedback = FeedbackType::fb_arm;
       if (arm_result == mavsdk::Action::Result::Success) {
-        pub::feedback.result = ResultType::success;
+        pub::feedback.result = ResultType::res_success;
       } else {
-        pub::feedback.result = ResultType::fail;
+        pub::feedback.result = ResultType::res_fail;
       }
       feedback_pub.publish(pub::feedback);
-      break;
+    } break;
 
-    case Action_cmd::disarm:
+    case Action_cmd::act_disarm: {
       const auto disarm_result = action.disarm();
       std::cout << disarm_result << std::endl;
-      pub::feedback.result = FeedbackType::disarm;
+      pub::feedback.feedback = FeedbackType::fb_disarm;
       if (disarm_result == mavsdk::Action::Result::Success) {
-        pub::feedback.result = ResultType::success;
+        pub::feedback.result = ResultType::res_success;
       } else {
-        pub::feedback.result = ResultType::fail;
+        pub::feedback.result = ResultType::res_fail;
       }
       feedback_pub.publish(pub::feedback);
-      break;
+    } break;
 
-    case Action_cmd::takeoff:
+    case Action_cmd::act_takeoff: {
       const auto takeoff_result = action.takeoff();
       std::cout << takeoff_result << std::endl;
-      $pub::feedback.result = FeedbackType::takeoff;
-      if (disarm_result == mavsdk::Action::Result::Success) {
-        pub::feedback.result = ResultType::success;
+      pub::feedback.feedback = FeedbackType::fb_takeoff;
+      if (takeoff_result == mavsdk::Action::Result::Success) {
+        pub::feedback.result = ResultType::res_success;
       } else {
-        pub::feedback.result = ResultType::fail;
+        pub::feedback.result = ResultType::res_fail;
       }
       feedback_pub.publish(pub::feedback);
-      break;
+    } break;
 
-    case Action_cmd::land:
+    case Action_cmd::act_land: {
       const auto land_result = action.land();
       std::cout << land_result << std::endl;
-      pub::feedback.result = FeedbackType::land;
-      if (disarm_result == mavsdk::Action::Result::Success) {
-        pub::feedback.result = ResultType::success;
+      pub::feedback.feedback = FeedbackType::fb_land;
+      if (land_result == mavsdk::Action::Result::Success) {
+        pub::feedback.result = ResultType::res_success;
       } else {
-        pub::feedback.result = ResultType::fail;
+        pub::feedback.result = ResultType::res_fail;
       }
       feedback_pub.publish(pub::feedback);
-      break;
+    } break;
 
-    case Action_cmd::offboard:
+    case Action_cmd::act_offboard: {
       // Send it once before starting offboard, otherwise it will be rejected.
-      const Offboard::PositionNedYaw stay{}; // TODO change initial position
+      Offboard::PositionNedYaw stay{}; // TODO change initial position
       stay.down_m = -1.5f;
       offboard.set_position_ned(stay);
 
@@ -189,7 +189,7 @@ int main(int argc, char **argv) {
         offboard.set_position_ned(position_msg);
       }
       offboard_result = offboard.stop();
-      break;
+    } break;
 
     default:
       break;
@@ -237,8 +237,8 @@ int main(int argc, char **argv) {
     // }
     // if (sub::action_cmd.action == Action_cmd::offboard) {
 
-    //   // Send it once before starting offboard, otherwise it will be rejected.
-    //   const Offboard::PositionNedYaw stay{};
+    //   // Send it once before starting offboard, otherwise it will be
+    //   rejected. const Offboard::PositionNedYaw stay{};
     //   offboard.set_position_ned(stay);
 
     //   Offboard::Result offboard_result = offboard.start();
@@ -257,7 +257,8 @@ int main(int argc, char **argv) {
     //     position_msg.north_m = sub::pos_cmd.position.x + x_offset;
     //     position_msg.east_m = sub::pos_cmd.position.y + y_offset;
     //     position_msg.down_m =
-    //         -sub::pos_cmd.position.z; // To account for px4 -z coordinate system
+    //         -sub::pos_cmd.position.z; // To account for px4 -z coordinate
+    //         system
     //                                   // (North-East-Down)
     //     position_msg.yaw_deg = -sub::pos_cmd.yaw_angle;
 
