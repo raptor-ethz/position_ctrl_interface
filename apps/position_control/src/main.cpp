@@ -1,4 +1,7 @@
+// include dependencies
 #include "include_helper.h"
+// include MAVSDK helper functions
+#include "MAVSDK_helper.h"
 
 using namespace mavsdk;
 using std::chrono::milliseconds;
@@ -10,6 +13,7 @@ using std::this_thread::sleep_for;
 constexpr static float x_offset = 0.5;
 constexpr static float y_offset = 0.5;
 /////////////////////////////////////////////////////////////////////////////////
+
 
 void usage(const std::string &bin_name) {
   std::cerr
@@ -68,14 +72,15 @@ int main(int argc, char **argv) {
   DefaultParticipant dp(0, "pos_ctrl_interface");
 
   // Create subscriber with msg type
-  DDSSubscriber pos_cmd_sub(idl_msg::QuadPositionCmdPubSubType(), &sub::pos_cmd,
+  DDSSubscriber pos_cmd_sub(idl_msg::QuadPosCmd_msgPubSubType(), &sub::pos_cmd,
                             "pos_cmd", dp.participant());
 
-  DDSSubscriber px4_cmd_sub(idl_msg::HeaderPubSubType(), &sub::px4_cmd,
-                            "px4_commands", dp.participant());
+  DDSSubscriber action_cmd_sub(idl_msg::QuadAction_msgPubSubType(),
+                               &sub::action_cmd, "px4_commands",
+                               dp.participant());
 
-  DDSPublisher px4_status_pub(idl_msg::HeaderPubSubType(), "px4_status_msgs",
-                              dp.participant());
+  DDSPublisher feedback_pub(idl_msg::QuadFeedback_msgPubSubType(),
+                            "px4_status_msgs", dp.participant());
   /////////////////////////////////////////////////////////////////////////////////
 
   if (connection_result != ConnectionResult::Success) {
@@ -122,57 +127,95 @@ int main(int argc, char **argv) {
   //   std::cout << "battery: " << battery_percent << std::endl;
   // }
 
-  while (true) {
-    px4_cmd_sub.listener->wait_for_data();
-    if (sub::px4_cmd.id == "info") {
-      // long battery_percent =
-      //     (long)(telemetry.battery().remaining_percent * 100.0);
-      // std::string local_pos;
+  // check matched
+  for (int i = 0;
+       !feedback_pub.listener.matched() || !action_cmd_sub.listener->matched();
+       ++i) {
+    std::cout << "Publisher hasn't matched. ";
 
-      // if (telemetry.health().is_local_position_ok) {
-      //   battery_percent += 1000;
-      // }
-      // if (telemetry.health().is_armable) {
-      //   battery_percent += 10000;
-      // }
-      // pub::error_msg.id = "Quadcopter Status";
-
-      // //"local position is " + local_pos +
-      // //                   " and kill switch is " + kill_switch;
-      // std::cout << battery_percent << std::endl;
-      // pub::error_msg.timestamp = battery_percent;
-      // px4_status_pub.publish(pub::error_msg);
+    if (i == 9) {
+      std::cerr << "Failed to match a subscriber." << std::endl;
+      return 1;
     }
-    if (sub::px4_cmd.id == "arm") {
+
+    std::cout << "Retrying in 3 seconds (" << 9 - i << " tries remaining)."
+              << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+  }
+
+  while (true) {
+    action_cmd_sub.listener->wait_for_data();
+    switch (sub::action_cmd.action) {
+    case Action_cmd::act_status: {
+      pub::feedback.status.battery =
+          (int)(telemetry.battery().remaining_percent * 100.0);
+      pub::feedback.status.local_position_ok =
+          telemetry.health().is_local_position_ok;
+      pub::feedback.status.armable = telemetry.health().is_armable;
+      feedback_pub.publish(pub::feedback);
+    } break;
+
+    case Action_cmd::act_arm: {
       const auto arm_result = action.arm();
       std::cout << arm_result << std::endl;
-      // pub::error_msg.id = "Arm Result";
-      // pub::error_msg.timestamp = (int)arm_result;
-      // px4_status_pub.publish(pub::error_msg);
-    }
-    if (sub::px4_cmd.id == "disarm") {
+      pub::feedback.feedback = FeedbackType::fb_arm;
+      if (arm_result == mavsdk::Action::Result::Success) {
+        pub::feedback.result = ResultType::res_success;
+      } else {
+        pub::feedback.result = ResultType::res_fail;
+      }
+      feedback_pub.publish(pub::feedback);
+    } break;
+
+    case Action_cmd::act_disarm: {
       const auto disarm_result = action.disarm();
       std::cout << disarm_result << std::endl;
-      // pub::error_msg.id = "Disarm Result";
-      // pub::error_msg.timestamp = (int)disarm_result;
-      // px4_status_pub.publish(pub::error_msg);
-    }
-    if (sub::px4_cmd.id == "takeoff") {
+      pub::feedback.feedback = FeedbackType::fb_disarm;
+      if (disarm_result == mavsdk::Action::Result::Success) {
+        pub::feedback.result = ResultType::res_success;
+      } else {
+        pub::feedback.result = ResultType::res_fail;
+      }
+      feedback_pub.publish(pub::feedback);
+    } break;
+
+    case Action_cmd::act_takeoff: {
       const auto takeoff_result = action.takeoff();
       std::cout << takeoff_result << std::endl;
-      // pub::error_msg.id = "Takeoff Result";
-      // pub::error_msg.timestamp = (int)takeoff_result;
-      // px4_status_pub.publish(pub::error_msg);
-    }
-    if (sub::px4_cmd.id == "land") {
+      pub::feedback.feedback = FeedbackType::fb_takeoff;
+      if (takeoff_result == mavsdk::Action::Result::Success) {
+        pub::feedback.result = ResultType::res_success;
+      } else {
+        pub::feedback.result = ResultType::res_fail;
+      }
+      feedback_pub.publish(pub::feedback);
+    } break;
+
+    case Action_cmd::act_land: {
       const auto land_result = action.land();
       std::cout << land_result << std::endl;
-      // pub::error_msg.id = "Land Result";
-      // pub::error_msg.timestamp = (int)land_result;
-      // px4_status_pub.publish(pub::error_msg);
-    }
-    if (sub::px4_cmd.id == "offboard") {
+      pub::feedback.feedback = FeedbackType::fb_land;
+      if (land_result == mavsdk::Action::Result::Success) {
+        pub::feedback.result = ResultType::res_success;
+      } else {
+        pub::feedback.result = ResultType::res_fail;
+      }
+      feedback_pub.publish(pub::feedback);
+    } break;
 
+    case Action_cmd::act_hover: {
+      const auto hover_result = action.hold();
+      std::cout << hover_result << std::endl;
+      pub::feedback.feedback = FeedbackType::fb_hover;
+      if (hover_result == mavsdk::Action::Result::Success) {
+        pub::feedback.result = ResultType::res_success;
+      } else {
+        pub::feedback.result = ResultType::res_fail;
+      }
+      feedback_pub.publish(pub::feedback);
+    } break;
+
+    case Action_cmd::act_offboard: {
       // Send it once before starting offboard, otherwise it will be rejected.
       Offboard::PositionNedYaw stay{};
       stay.down_m = -1.5f;
@@ -180,7 +223,6 @@ int main(int argc, char **argv) {
 
       Offboard::Result offboard_result = offboard.start();
       Offboard::PositionNedYaw position_msg{};
-      position_msg.down_m = -1.5f;
       offboard.set_position_ned(position_msg);
       // sleep_for(milliseconds(100));
 
@@ -188,7 +230,7 @@ int main(int argc, char **argv) {
         // Blocks until new data is available
         pos_cmd_sub.listener->wait_for_data();
 
-        if (sub::pos_cmd.header.id == "break") {
+        if (sub::pos_cmd.header.description == "break") {
           break;
         }
         position_msg.north_m = sub::pos_cmd.position.x + x_offset;
@@ -201,7 +243,83 @@ int main(int argc, char **argv) {
         offboard.set_position_ned(position_msg);
       }
       offboard_result = offboard.stop();
+    } break;
+
+    default:
+      break;
     }
+
+    // // old implementation
+    // if (sub::action_cmd.action == Action_cmd::status) {
+    //   pub::feedback.battery =
+    //       (int)(telemetry.battery().remaining_percent * 100.0);
+
+    //   pub::feedback.local_position_ok =
+    //       telemetry.health().is_local_position_ok;
+
+    //   pub::feedback.armable = telemetry.health().is_armable;
+
+    //   feedback_pub.publish(pub::feedback);
+    // }
+    // if (sub::action_cmd.action == Action_cmd::arm) {
+    //   const auto arm_result = action.arm();
+    //   std::cout << arm_result << std::endl;
+    //   // pub::error_msg.id = "Arm Result";
+    //   // pub::error_msg.timestamp = (int)arm_result;
+    //   // px4_status_pub.publish(pub::error_msg);
+    // }
+    // if (sub::action_cmd.action == Action_cmd::disarm) {
+    //   const auto disarm_result = action.disarm();
+    //   std::cout << disarm_result << std::endl;
+    //   // pub::error_msg.id = "Disarm Result";
+    //   // pub::error_msg.timestamp = (int)disarm_result;
+    //   // px4_status_pub.publish(pub::error_msg);
+    // }
+    // if (sub::action_cmd.action == Action_cmd::takeoff) {
+    //   const auto takeoff_result = action.takeoff();
+    //   std::cout << takeoff_result << std::endl;
+    //   // pub::error_msg.id = "Takeoff Result";
+    //   // pub::error_msg.timestamp = (int)takeoff_result;
+    //   // px4_status_pub.publish(pub::error_msg);
+    // }
+    // if (sub::action_cmd.action == Action_cmd::land) {
+    //   const auto land_result = action.land();
+    //   std::cout << land_result << std::endl;
+    //   // pub::error_msg.id = "Land Result";
+    //   // pub::error_msg.timestamp = (int)land_result;
+    //   // px4_status_pub.publish(pub::error_msg);
+    // }
+    // if (sub::action_cmd.action == Action_cmd::offboard) {
+
+    //   // Send it once before starting offboard, otherwise it will be
+    //   rejected. const Offboard::PositionNedYaw stay{};
+    //   offboard.set_position_ned(stay);
+
+    //   Offboard::Result offboard_result = offboard.start();
+    //   Offboard::PositionNedYaw position_msg{};
+    //   position_msg.down_m = -1.5f;
+    //   offboard.set_position_ned(position_msg);
+    //   // sleep_for(milliseconds(100));
+
+    //   while (true) {
+    //     // Blocks until new data is available
+    //     pos_cmd_sub.listener->wait_for_data();
+
+    //     if (sub::pos_cmd.header.description == "break") {
+    //       break;
+    //     }
+    //     position_msg.north_m = sub::pos_cmd.position.x + x_offset;
+    //     position_msg.east_m = sub::pos_cmd.position.y + y_offset;
+    //     position_msg.down_m =
+    //         -sub::pos_cmd.position.z; // To account for px4 -z coordinate
+    //         system
+    //                                   // (North-East-Down)
+    //     position_msg.yaw_deg = -sub::pos_cmd.yaw_angle;
+
+    //     offboard.set_position_ned(position_msg);
+    //   }
+    //   offboard_result = offboard.stop();
+    // }
   }
   return 0;
 }

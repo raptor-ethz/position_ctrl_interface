@@ -4,10 +4,10 @@
 #include <cmath>
 #include <future>
 #include <iostream>
+#include <string>
 #include <thread>
 
 // MAVSDK
-
 #include <mavsdk/mavsdk.h>
 #include <mavsdk/plugins/action/action.h>
 #include <mavsdk/plugins/offboard/offboard.h>
@@ -15,6 +15,6 @@
 
 // Fastdds
 #include "domain_participant.h"
-#include "subscriber.h"
 #include "publisher.h"
 #include "sub_callback.h"
+#include "subscriber.h"

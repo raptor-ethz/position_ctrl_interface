@@ -1,16 +1,25 @@
 #pragma once
 
-#include "QuadPositionCmdPubSubTypes.h"
-#include "quadcopter_msgs/msgs/QuadPositionCmd.h"
+/* subscribers */
 
-#include "HeaderPubSubTypes.h"
-#include "std_msgs/msgs/Header.h"
-// Subscriber data that needs to be accessed in main
+#include "QuadPosCmd_msg.h"
+#include "QuadPosCmd_msgPubSubTypes.h"
+
+#include "QuadAction_msg.h"
+#include "QuadAction_msgPubSubTypes.h"
+
 namespace sub {
-    cpp_msg::QuadPositionCmd pos_cmd;
-    cpp_msg::Header px4_cmd;
+cpp_msg::QuadPosCmd_msg pos_cmd;
+cpp_msg::QuadAction_msg action_cmd;
 } // namespace sub
 
-namespace pub{
-    cpp_msg::Header error_msg;
+/* publishers */
+
+#include "QuadStatus_msg.h"
+#include "QuadStatus_msgPubSubTypes.h"
+#include "QuadFeedback_msg.h"
+#include "QuadFeedback_msgPubSubTypes.h"
+
+namespace pub {
+cpp_msg::QuadFeedback_msg feedback;
 }
