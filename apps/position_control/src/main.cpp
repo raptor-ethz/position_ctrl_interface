@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
                                &sub::action_cmd, "px4_commands",
                                dp.participant());
 
-  DDSPublisher feedback_pub(idl_msg::QuadStatus_msgPubSubType(),
+  DDSPublisher feedback_pub(idl_msg::QuadFeedback_msgPubSubType(),
                             "px4_status_msgs", dp.participant());
   /////////////////////////////////////////////////////////////////////////////////
 
@@ -105,54 +105,70 @@ int main(int argc, char **argv) {
     action_cmd_sub.listener->wait_for_data();
     switch (sub::action_cmd.action) {
     case Action_cmd::status:
-      pub::status_msg.battery =
+      pub::feedback.status.battery =
           (int)(telemetry.battery().remaining_percent * 100.0);
-      pub::status_msg.local_position_ok =
+      pub::feedback.status.local_position_ok =
           telemetry.health().is_local_position_ok;
-      pub::status_msg.armable = telemetry.health().is_armable;
-      feedback_pub.publish(pub::status_msg);
+      pub::feedback.status.armable = telemetry.health().is_armable;
+      feedback_pub.publish(pub::feedback);
       break;
 
     case Action_cmd::arm:
       const auto arm_result = action.arm();
       std::cout << arm_result << std::endl;
-      // pub::error_msg.id = "Arm Result";
-      // pub::error_msg.timestamp = (int)arm_result;
-      // px4_status_pub.publish(pub::error_msg);
+      pub::feedback.result = FeedbackType::arm;
+      if (arm_result == mavsdk::Action::Result::Success) {
+        pub::feedback.result = ResultType::success;
+      } else {
+        pub::feedback.result = ResultType::fail;
+      }
+      feedback_pub.publish(pub::feedback);
       break;
 
     case Action_cmd::disarm:
       const auto disarm_result = action.disarm();
       std::cout << disarm_result << std::endl;
-      // pub::error_msg.id = "Disarm Result";
-      // pub::error_msg.timestamp = (int)disarm_result;
-      // px4_status_pub.publish(pub::error_msg);
+      pub::feedback.result = FeedbackType::disarm;
+      if (disarm_result == mavsdk::Action::Result::Success) {
+        pub::feedback.result = ResultType::success;
+      } else {
+        pub::feedback.result = ResultType::fail;
+      }
+      feedback_pub.publish(pub::feedback);
       break;
 
     case Action_cmd::takeoff:
       const auto takeoff_result = action.takeoff();
       std::cout << takeoff_result << std::endl;
-      // pub::error_msg.id = "Takeoff Result";
-      // pub::error_msg.timestamp = (int)takeoff_result;
-      // px4_status_pub.publish(pub::error_msg);
+      $pub::feedback.result = FeedbackType::takeoff;
+      if (disarm_result == mavsdk::Action::Result::Success) {
+        pub::feedback.result = ResultType::success;
+      } else {
+        pub::feedback.result = ResultType::fail;
+      }
+      feedback_pub.publish(pub::feedback);
       break;
 
     case Action_cmd::land:
       const auto land_result = action.land();
       std::cout << land_result << std::endl;
-      // pub::error_msg.id = "Land Result";
-      // pub::error_msg.timestamp = (int)land_result;
-      // px4_status_pub.publish(pub::error_msg);
+      pub::feedback.result = FeedbackType::land;
+      if (disarm_result == mavsdk::Action::Result::Success) {
+        pub::feedback.result = ResultType::success;
+      } else {
+        pub::feedback.result = ResultType::fail;
+      }
+      feedback_pub.publish(pub::feedback);
       break;
 
     case Action_cmd::offboard:
       // Send it once before starting offboard, otherwise it will be rejected.
       const Offboard::PositionNedYaw stay{}; // TODO change initial position
+      stay.down_m = -1.5f;
       offboard.set_position_ned(stay);
 
       Offboard::Result offboard_result = offboard.start();
       Offboard::PositionNedYaw position_msg{};
-      position_msg.down_m = -1.5f;
       offboard.set_position_ned(position_msg);
       // sleep_for(milliseconds(100));
 
@@ -181,15 +197,15 @@ int main(int argc, char **argv) {
 
     // // old implementation
     // if (sub::action_cmd.action == Action_cmd::status) {
-    //   pub::status_msg.battery =
+    //   pub::feedback.battery =
     //       (int)(telemetry.battery().remaining_percent * 100.0);
 
-    //   pub::status_msg.local_position_ok =
+    //   pub::feedback.local_position_ok =
     //       telemetry.health().is_local_position_ok;
 
-    //   pub::status_msg.armable = telemetry.health().is_armable;
+    //   pub::feedback.armable = telemetry.health().is_armable;
 
-    //   feedback_pub.publish(pub::status_msg);
+    //   feedback_pub.publish(pub::feedback);
     // }
     // if (sub::action_cmd.action == Action_cmd::arm) {
     //   const auto arm_result = action.arm();

@@ -17,7 +17,9 @@ cpp_msg::QuadAction_msg action_cmd;
 
 #include "QuadStatus_msg.h"
 #include "QuadStatus_msgPubSubTypes.h"
+#include "QuadFeedback_msg.h"
+#include "QuadFeedback_msgPubSubTypes.h"
 
 namespace pub {
-cpp_msg::QuadStatus_msg status_msg;
+cpp_msg::QuadFeedback_msg feedback;
 }
