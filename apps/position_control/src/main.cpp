@@ -161,6 +161,18 @@ int main(int argc, char **argv) {
       feedback_pub.publish(pub::feedback);
     } break;
 
+    case Action_cmd::act_hover: {
+      const auto hover_result = action.hold();
+      std::cout << hover_result << std::endl;
+      pub::feedback.feedback = FeedbackType::fb_hover;
+      if (hover_result == mavsdk::Action::Result::Success) {
+        pub::feedback.result = ResultType::res_success;
+      } else {
+        pub::feedback.result = ResultType::res_fail;
+      }
+      feedback_pub.publish(pub::feedback);
+    } break;
+
     case Action_cmd::act_offboard: {
       // Send it once before starting offboard, otherwise it will be rejected.
       Offboard::PositionNedYaw stay{}; // TODO change initial position
