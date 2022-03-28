@@ -37,8 +37,8 @@ int main(int argc, char **argv) {
                                &sub::action_cmd, "px4_commands",
                                dp.participant());
 
-  DDSPublisher status_pub(idl_msg::QuadStatus_msgPubSubType(),
-                          "px4_status_msgs", dp.participant());
+  DDSPublisher feedback_pub(idl_msg::QuadStatus_msgPubSubType(),
+                            "px4_status_msgs", dp.participant());
   /////////////////////////////////////////////////////////////////////////////////
 
   if (connection_result != ConnectionResult::Success) {
@@ -85,51 +85,69 @@ int main(int argc, char **argv) {
   //   std::cout << "battery: " << battery_percent << std::endl;
   // }
 
+  // check matched
+  for (int i = 0;
+       !feedback_pub.listener.matched() || !action_cmd_sub.listener->matched();
+       ++i) {
+    std::cout << "Publisher hasn't matched. ";
+
+    if (i == 9) {
+      std::cerr << "Failed to match a subscriber." << std::endl;
+      return 1;
+    }
+
+    std::cout << "Retrying in 3 seconds (" << 9 - i << " tries remaining)."
+              << std::endl;
+    std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+  }
+
   while (true) {
     action_cmd_sub.listener->wait_for_data();
-    if (sub::action_cmd.action == Action_cmd::status) {
+    switch (sub::action_cmd.action) {
+    case Action_cmd::status:
       pub::status_msg.battery =
           (int)(telemetry.battery().remaining_percent * 100.0);
-
       pub::status_msg.local_position_ok =
           telemetry.health().is_local_position_ok;
-
       pub::status_msg.armable = telemetry.health().is_armable;
+      feedback_pub.publish(pub::status_msg);
+      break;
 
-      status_pub.publish(pub::status_msg);
-    }
-    if (sub::action_cmd.action == Action_cmd::arm) {
+    case Action_cmd::arm:
       const auto arm_result = action.arm();
       std::cout << arm_result << std::endl;
       // pub::error_msg.id = "Arm Result";
       // pub::error_msg.timestamp = (int)arm_result;
       // px4_status_pub.publish(pub::error_msg);
-    }
-    if (sub::action_cmd.action == Action_cmd::disarm) {
+      break;
+
+    case Action_cmd::disarm:
       const auto disarm_result = action.disarm();
       std::cout << disarm_result << std::endl;
       // pub::error_msg.id = "Disarm Result";
       // pub::error_msg.timestamp = (int)disarm_result;
       // px4_status_pub.publish(pub::error_msg);
-    }
-    if (sub::action_cmd.action == Action_cmd::takeoff) {
+      break;
+
+    case Action_cmd::takeoff:
       const auto takeoff_result = action.takeoff();
       std::cout << takeoff_result << std::endl;
       // pub::error_msg.id = "Takeoff Result";
       // pub::error_msg.timestamp = (int)takeoff_result;
       // px4_status_pub.publish(pub::error_msg);
-    }
-    if (sub::action_cmd.action == Action_cmd::land) {
+      break;
+
+    case Action_cmd::land:
       const auto land_result = action.land();
       std::cout << land_result << std::endl;
       // pub::error_msg.id = "Land Result";
       // pub::error_msg.timestamp = (int)land_result;
       // px4_status_pub.publish(pub::error_msg);
-    }
-    if (sub::action_cmd.action == Action_cmd::offboard) {
+      break;
 
+    case Action_cmd::offboard:
       // Send it once before starting offboard, otherwise it will be rejected.
-      const Offboard::PositionNedYaw stay{};
+      const Offboard::PositionNedYaw stay{}; // TODO change initial position
       offboard.set_position_ned(stay);
 
       Offboard::Result offboard_result = offboard.start();
@@ -155,7 +173,82 @@ int main(int argc, char **argv) {
         offboard.set_position_ned(position_msg);
       }
       offboard_result = offboard.stop();
+      break;
+
+    default:
+      break;
     }
+
+    // // old implementation
+    // if (sub::action_cmd.action == Action_cmd::status) {
+    //   pub::status_msg.battery =
+    //       (int)(telemetry.battery().remaining_percent * 100.0);
+
+    //   pub::status_msg.local_position_ok =
+    //       telemetry.health().is_local_position_ok;
+
+    //   pub::status_msg.armable = telemetry.health().is_armable;
+
+    //   feedback_pub.publish(pub::status_msg);
+    // }
+    // if (sub::action_cmd.action == Action_cmd::arm) {
+    //   const auto arm_result = action.arm();
+    //   std::cout << arm_result << std::endl;
+    //   // pub::error_msg.id = "Arm Result";
+    //   // pub::error_msg.timestamp = (int)arm_result;
+    //   // px4_status_pub.publish(pub::error_msg);
+    // }
+    // if (sub::action_cmd.action == Action_cmd::disarm) {
+    //   const auto disarm_result = action.disarm();
+    //   std::cout << disarm_result << std::endl;
+    //   // pub::error_msg.id = "Disarm Result";
+    //   // pub::error_msg.timestamp = (int)disarm_result;
+    //   // px4_status_pub.publish(pub::error_msg);
+    // }
+    // if (sub::action_cmd.action == Action_cmd::takeoff) {
+    //   const auto takeoff_result = action.takeoff();
+    //   std::cout << takeoff_result << std::endl;
+    //   // pub::error_msg.id = "Takeoff Result";
+    //   // pub::error_msg.timestamp = (int)takeoff_result;
+    //   // px4_status_pub.publish(pub::error_msg);
+    // }
+    // if (sub::action_cmd.action == Action_cmd::land) {
+    //   const auto land_result = action.land();
+    //   std::cout << land_result << std::endl;
+    //   // pub::error_msg.id = "Land Result";
+    //   // pub::error_msg.timestamp = (int)land_result;
+    //   // px4_status_pub.publish(pub::error_msg);
+    // }
+    // if (sub::action_cmd.action == Action_cmd::offboard) {
+
+    //   // Send it once before starting offboard, otherwise it will be rejected.
+    //   const Offboard::PositionNedYaw stay{};
+    //   offboard.set_position_ned(stay);
+
+    //   Offboard::Result offboard_result = offboard.start();
+    //   Offboard::PositionNedYaw position_msg{};
+    //   position_msg.down_m = -1.5f;
+    //   offboard.set_position_ned(position_msg);
+    //   // sleep_for(milliseconds(100));
+
+    //   while (true) {
+    //     // Blocks until new data is available
+    //     pos_cmd_sub.listener->wait_for_data();
+
+    //     if (sub::pos_cmd.header.description == "break") {
+    //       break;
+    //     }
+    //     position_msg.north_m = sub::pos_cmd.position.x + x_offset;
+    //     position_msg.east_m = sub::pos_cmd.position.y + y_offset;
+    //     position_msg.down_m =
+    //         -sub::pos_cmd.position.z; // To account for px4 -z coordinate system
+    //                                   // (North-East-Down)
+    //     position_msg.yaw_deg = -sub::pos_cmd.yaw_angle;
+
+    //     offboard.set_position_ned(position_msg);
+    //   }
+    //   offboard_result = offboard.stop();
+    // }
   }
   return 0;
 }
