@@ -15,11 +15,14 @@ cpp_msg::QuadAction_msg action_cmd;
 
 /* publishers */
 
-#include "QuadStatus_msg.h"
-#include "QuadStatus_msgPubSubTypes.h"
+#include "Mocap_msg.h"
+#include "Mocap_msgPubSubTypes.h"
 #include "QuadFeedback_msg.h"
 #include "QuadFeedback_msgPubSubTypes.h"
+#include "QuadStatus_msg.h"
+#include "QuadStatus_msgPubSubTypes.h"
 
 namespace pub {
 cpp_msg::QuadFeedback_msg feedback;
-}
+cpp_msg::Mocap_msg mocap;
+} // namespace pub

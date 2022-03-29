@@ -3,6 +3,8 @@
 // include MAVSDK helper functions
 #include "MAVSDK_helper.h"
 
+//#define SIMULATION
+
 using namespace mavsdk;
 using std::chrono::milliseconds;
 using std::chrono::seconds;
@@ -13,48 +15,6 @@ using std::this_thread::sleep_for;
 constexpr static float x_offset = 0.5;
 constexpr static float y_offset = 0.5;
 /////////////////////////////////////////////////////////////////////////////////
-
-
-void usage(const std::string &bin_name) {
-  std::cerr
-      << "Usage : " << bin_name << " <connection_url>\n"
-      << "Connection URL format should be :\n"
-      << " For TCP : tcp://[server_host][:server_port]\n"
-      << " For UDP : udp://[bind_host][:bind_port]\n"
-      << " For Serial : serial:///path/to/serial/dev[:baudrate]\n"
-      << "For example, to connect to the simulator use URL: udp://:14540\n";
-}
-
-// Connects to a MAVSDK system
-std::shared_ptr<System> get_system(Mavsdk &mavsdk) {
-  std::cout << "Waiting to discover system...\n";
-  auto prom = std::promise<std::shared_ptr<System>>{};
-  auto fut = prom.get_future();
-
-  // We wait for new systems to be discovered, once we find one that has an
-  // autopilot, we decide to use it.
-  mavsdk.subscribe_on_new_system([&mavsdk, &prom]() {
-    auto system = mavsdk.systems().back();
-
-    if (system->has_autopilot()) {
-      std::cout << "Discovered autopilot\n";
-
-      // Unsubscribe again as we only want to find one system.
-      mavsdk.subscribe_on_new_system(nullptr);
-      prom.set_value(system);
-    }
-  });
-
-  // We usually receive heartbeats at 1Hz, therefore we should find a
-  // system after around 3 seconds max, surely.
-  if (fut.wait_for(seconds(3)) == std::future_status::timeout) {
-    std::cerr << "No autopilot found.\n";
-    return {};
-  }
-
-  // Get discovered system now.
-  return fut.get();
-}
 
 int main(int argc, char **argv) {
   if (argc != 2) {
@@ -81,6 +41,14 @@ int main(int argc, char **argv) {
 
   DDSPublisher feedback_pub(idl_msg::QuadFeedback_msgPubSubType(),
                             "px4_status_msgs", dp.participant());
+
+#ifdef SIMULATION
+  std::cout << "THIS CODE IS FOR RUNNING IN A SIMULATION FRAMEWORK"
+            << std::endl;
+  DDSPublisher mocap_pub(idl_msg::Mocap_msgPubSubType(), "mocap_srl_quad",
+                         dp.participant());
+#endif
+
   /////////////////////////////////////////////////////////////////////////////////
 
   if (connection_result != ConnectionResult::Success) {
@@ -127,6 +95,24 @@ int main(int argc, char **argv) {
   //   std::cout << "battery: " << battery_percent << std::endl;
   // }
 
+#ifdef SIMULATION
+  // publish mocap data for reference generator
+  for (int i = 0; i < 30; i++) {
+    //  xyz
+    pub::mocap.position.x =
+        telemetry.position_velocity_ned().position.north_m - x_offset;
+    pub::mocap.position.y =
+        telemetry.position_velocity_ned().position.east_m - y_offset;
+    pub::mocap.position.z = -telemetry.position_velocity_ned().position.down_m;
+    // rpy
+    pub::mocap.orientation.roll = telemetry.attitude_euler().roll_deg;
+    pub::mocap.orientation.roll = telemetry.attitude_euler().pitch_deg;
+    pub::mocap.orientation.roll = telemetry.attitude_euler().yaw_deg;
+    // publish message
+    mocap_pub.publish(pub::mocap);
+  }
+#endif
+
   // check matched
   for (int i = 0;
        !feedback_pub.listener.matched() || !action_cmd_sub.listener->matched();
@@ -144,15 +130,20 @@ int main(int argc, char **argv) {
   }
 
   while (true) {
+    std::cout << "wait for action command" << std::endl;
     action_cmd_sub.listener->wait_for_data();
+    std::cout << "received an action command" << std::endl;
     switch (sub::action_cmd.action) {
     case Action_cmd::act_status: {
+      pub::feedback.feedback = FeedbackType::fb_status;
       pub::feedback.status.battery =
           (int)(telemetry.battery().remaining_percent * 100.0);
       pub::feedback.status.local_position_ok =
           telemetry.health().is_local_position_ok;
       pub::feedback.status.armable = telemetry.health().is_armable;
+      std::cout << "publish status" << std::endl;
       feedback_pub.publish(pub::feedback);
+      std::cout << "published status" << std::endl;
     } break;
 
     case Action_cmd::act_arm: {
@@ -217,14 +208,12 @@ int main(int argc, char **argv) {
 
     case Action_cmd::act_offboard: {
       // Send it once before starting offboard, otherwise it will be rejected.
-      Offboard::PositionNedYaw stay{};
-      stay.down_m = -1.5f;
-      offboard.set_position_ned(stay);
+      Offboard::PositionNedYaw position_msg{};
+      position_msg.down_m = -1.5f;
+      offboard.set_position_ned(position_msg);
 
       Offboard::Result offboard_result = offboard.start();
-      Offboard::PositionNedYaw position_msg{};
       offboard.set_position_ned(position_msg);
-      // sleep_for(milliseconds(100));
 
       while (true) {
         // Blocks until new data is available
@@ -241,6 +230,28 @@ int main(int argc, char **argv) {
         position_msg.yaw_deg = -sub::pos_cmd.yaw_angle;
 
         offboard.set_position_ned(position_msg);
+
+        // #ifdef SIMULATION
+        //         pub::mocap.header.description = "mocap message";
+        //         // xyz
+        //         pub::mocap.position.x =
+        //             telemetry.position_velocity_ned().position.north_m -
+        //             x_offset;
+        //         pub::mocap.position.y =
+        //             telemetry.position_velocity_ned().position.east_m -
+        //             y_offset;
+        //         pub::mocap.position.z =
+        //             -telemetry.position_velocity_ned().position.down_m;
+        //         // rpy
+        //         pub::mocap.orientation.roll =
+        //         telemetry.attitude_euler().roll_deg;
+        //         pub::mocap.orientation.roll =
+        //         telemetry.attitude_euler().pitch_deg;
+        //         pub::mocap.orientation.roll =
+        //         telemetry.attitude_euler().yaw_deg;
+        //         // publish message
+        //         mocap_pub.publish(pub::mocap);
+        // #endif
       }
       offboard_result = offboard.stop();
     } break;
