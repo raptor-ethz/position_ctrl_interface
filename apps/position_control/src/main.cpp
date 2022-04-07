@@ -219,7 +219,8 @@ int main(int argc, char **argv) {
         // Blocks until new data is available
         pos_cmd_sub.listener->wait_for_data();
 
-        if (sub::pos_cmd.header.description == "break") {
+        // terminate offboard?
+        if (sub::action_cmd.action != Action_cmd::act_offboard) {
           break;
         }
         position_msg.north_m = sub::pos_cmd.position.x + x_offset;
