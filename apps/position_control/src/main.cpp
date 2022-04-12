@@ -1,9 +1,8 @@
 // include dependencies
 #include "include_helper.h"
+
 // include MAVSDK helper functions
 #include "MAVSDK_helper.h"
-
-//#define SIMULATION
 
 using namespace mavsdk;
 using std::chrono::milliseconds;
@@ -18,12 +17,14 @@ constexpr static float y_offset = 0.5;
 
 int main(int argc, char **argv)
 {
+  // check if serial port was given as command line argument
   if (argc != 2)
   {
     usage(argv[0]);
     return 1;
   }
 
+  // create mavsdk instance
   Mavsdk mavsdk;
   ConnectionResult connection_result = mavsdk.add_any_connection(argv[1]);
 
@@ -44,15 +45,6 @@ int main(int argc, char **argv)
   DDSPublisher feedback_pub(idl_msg::QuadFeedback_msgPubSubType(),
                             "px4_status_msgs", dp.participant());
 
-#ifdef SIMULATION
-  std::cout << "THIS CODE IS FOR RUNNING IN A SIMULATION FRAMEWORK"
-            << std::endl;
-  DDSPublisher mocap_pub(idl_msg::Mocap_msgPubSubType(), "mocap_srl_quad",
-                         dp.participant());
-#endif
-
-  /////////////////////////////////////////////////////////////////////////////////
-
   if (connection_result != ConnectionResult::Success)
   {
     std::cerr << "Connection failed: " << connection_result << '\n';
@@ -69,54 +61,8 @@ int main(int argc, char **argv)
   auto action = Action{system};
   auto offboard = Offboard{system};
   auto telemetry = Telemetry{system};
+  auto mavlinkPassthrough = MavlinkPassthrough{system};
   std::cout << "System is ready\n";
-
-  // pub::error_msg.id = "THIS IS A TEST ERROR MESSAGE";
-  // px4_status_pub.publish(pub::error_msg);
-
-  // test for health and battery
-  //  while (true) {
-  //    int battery_percent = (int)(telemetry.battery().remaining_percent *
-  //    100.0);
-
-  //   std::string local_pos;
-  //   if (telemetry.health().is_local_position_ok) {
-  //     local_pos = "ok";
-  //   } else {
-  //     local_pos = "not ok";
-  //   }
-
-  //   std::string kill_switch;
-  //   if (telemetry.health().is_armable) {
-  //     kill_switch = "disengaged";
-  //   } else {
-  //     kill_switch = "engaged";
-  //   }
-
-  //   std::string health_info =
-  //       "local position is " + local_pos + " and kill switch is " +
-  //       kill_switch;
-  //   std::cout << "battery: " << battery_percent << std::endl;
-  // }
-
-#ifdef SIMULATION
-  // publish mocap data for reference generator
-  for (int i = 0; i < 30; i++)
-  {
-    //  xyz
-    pub::mocap.position.x =
-        telemetry.position_velocity_ned().position.north_m - x_offset;
-    pub::mocap.position.y =
-        telemetry.position_velocity_ned().position.east_m - y_offset;
-    pub::mocap.position.z = -telemetry.position_velocity_ned().position.down_m;
-    // rpy
-    pub::mocap.orientation.roll = telemetry.attitude_euler().roll_deg;
-    pub::mocap.orientation.roll = telemetry.attitude_euler().pitch_deg;
-    pub::mocap.orientation.roll = telemetry.attitude_euler().yaw_deg;
-    // publish message
-    mocap_pub.publish(pub::mocap);
-  }
-#endif
 
   // check matched
   for (int i = 0;
@@ -171,6 +117,17 @@ int main(int argc, char **argv)
         pub::feedback.result = ResultType::res_fail;
       }
       feedback_pub.publish(pub::feedback);
+
+      /* SET HOME POSITION */
+      // set home position to current position [NOT TESTED]
+      mavlink_message_t msg;
+      mavlink_set_home_position_t home_position;
+      home_position.x = telemetry.position_velocity_ned().position.north_m;
+      home_position.y = telemetry.position_velocity_ned().position.east_m;
+      home_position.z = telemetry.position_velocity_ned().position.down_m;
+      mavlink_msg_set_home_position_encode(system->get_system_id(), system->component_ids()[0], &msg, &home_position);
+      // publish mavlink message
+      mavlinkPassthrough.send_message(msg)
     }
     break;
 
@@ -270,28 +227,6 @@ int main(int argc, char **argv)
         position_msg.yaw_deg = -sub::pos_cmd.yaw_angle;
         std::cout << "x:\t" << sub::pos_cmd.position.x << "\t y: \t" << sub::pos_cmd.position.y << "\t z: \t" << sub::pos_cmd.position.z << std::endl;
         offboard.set_position_ned(position_msg);
-
-        // #ifdef SIMULATION
-        //         pub::mocap.header.description = "mocap message";
-        //         // xyz
-        //         pub::mocap.position.x =
-        //             telemetry.position_velocity_ned().position.north_m -
-        //             x_offset;
-        //         pub::mocap.position.y =
-        //             telemetry.position_velocity_ned().position.east_m -
-        //             y_offset;
-        //         pub::mocap.position.z =
-        //             -telemetry.position_velocity_ned().position.down_m;
-        //         // rpy
-        //         pub::mocap.orientation.roll =
-        //         telemetry.attitude_euler().roll_deg;
-        //         pub::mocap.orientation.roll =
-        //         telemetry.attitude_euler().pitch_deg;
-        //         pub::mocap.orientation.roll =
-        //         telemetry.attitude_euler().yaw_deg;
-        //         // publish message
-        //         mocap_pub.publish(pub::mocap);
-        // #endif
       }
       offboard_result = offboard.stop();
     }
