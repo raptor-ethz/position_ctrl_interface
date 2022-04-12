@@ -127,7 +127,7 @@ int main(int argc, char **argv)
       home_position.z = telemetry.position_velocity_ned().position.down_m;
       mavlink_msg_set_home_position_encode(system->get_system_id(), system->component_ids()[0], &msg, &home_position);
       // publish mavlink message
-      mavlinkPassthrough.send_message(msg)
+      mavlinkPassthrough.send_message(msg);
     }
     break;
 
