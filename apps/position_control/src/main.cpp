@@ -13,6 +13,13 @@ using std::this_thread::sleep_for;
 constexpr static float x_offset = 0.5;
 constexpr static float y_offset = 0.5;
 
+
+std::function<void(const mavlink_message_t &)> homePositionCallback =
+  [](const mavlink_message_t &raw_msg) {
+    auto longitude = mavlink_msg_home_position_get_longitude(&raw_msg);
+    std::cout << "Longitude: " << longitude << '\n';
+  };
+
 int main(int argc, char **argv) {
   // check if serial port was given as command line argument
   if (argc != 2) {
@@ -73,6 +80,9 @@ int main(int argc, char **argv) {
 
   // TODO
   bool wait_for_data = true;
+
+  // subscribe to home position
+  mavlinkPassthrough.subscribe_message_async(410, homePositionCallback);
 
   // main loop
   while (true) {
