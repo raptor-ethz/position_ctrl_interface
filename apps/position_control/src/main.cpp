@@ -179,10 +179,25 @@ int main(int argc, char **argv)
 
     case Action_cmd::act_takeoff:
     {
+      // old method
+      /*
       const auto takeoff_result = action.takeoff();
       std::cout << takeoff_result << std::endl;
       pub::feedback.feedback = FeedbackType::fb_takeoff;
       if (takeoff_result == mavsdk::Action::Result::Success)
+      {
+        pub::feedback.result = ResultType::res_success;
+      }
+      else
+      {
+        pub::feedback.result = ResultType::res_fail;
+      }
+      feedback_pub.publish(pub::feedback);*/
+
+      // new method
+      const bool takeoff_result = takeoff(offboard, telemetry, 1.5, 0);
+      pub::feedback.feedback = FeedbackType::fb_takeoff;
+      if (takeoff_result == true)
       {
         pub::feedback.result = ResultType::res_success;
       }
