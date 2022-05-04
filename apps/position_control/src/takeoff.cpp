@@ -20,7 +20,7 @@ float thrust_to_throttle(float thrust)
     return (0.02394 * thrust + 0.1644);
 }
 
-bool takeoff(const mavsdk::Offboard &offboard, const mavsdk::Telemetry &telemetry, float altitude, float yaw)
+bool takeoff(const mavsdk::Offboard &offboard, const mavsdk::Telemetry &telemetry, float x, float y, float z, float yaw)
 {
     std::cout << "Taking off...\n";
 
@@ -35,7 +35,7 @@ bool takeoff(const mavsdk::Offboard &offboard, const mavsdk::Telemetry &telemetr
     /* INITIALIZE VARIABLES */
 
     // reference values
-    Eigen::Vector3f pos_ref(0, 0, altitude);
+    Eigen::Vector3f pos_ref(x, y, z);
     Eigen::Vector3f vel_ref(0, 0, 0);
     Eigen::Vector3f acc_ref(0, 0, 0);
     Eigen::Vector3f x_b_ref(0, 0, 0);
@@ -179,7 +179,7 @@ bool takeoff(const mavsdk::Offboard &offboard, const mavsdk::Telemetry &telemetr
         offboard.set_attitude(att_cmd);
 
         /*CHECK IF TARGET HAS BEEN REACHED OR TIMEOUT */
-        if (pos(2) > 0.99 * altitude || t > takeoff_params::timeout)
+        if (pos(2) > 0.99 * z || t > takeoff_params::timeout)
         {
             break;
         }

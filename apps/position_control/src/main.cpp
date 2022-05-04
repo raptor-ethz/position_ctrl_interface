@@ -180,7 +180,7 @@ int main(int argc, char **argv)
     case Action_cmd::act_takeoff:
     {
       // old method
-      /*
+
       const auto takeoff_result = action.takeoff();
       std::cout << takeoff_result << std::endl;
       pub::feedback.feedback = FeedbackType::fb_takeoff;
@@ -192,20 +192,22 @@ int main(int argc, char **argv)
       {
         pub::feedback.result = ResultType::res_fail;
       }
-      feedback_pub.publish(pub::feedback);*/
+      feedback_pub.publish(pub::feedback);
 
       // new method
-      const bool takeoff_result = takeoff(offboard, telemetry, 1.5, 0);
-      pub::feedback.feedback = FeedbackType::fb_takeoff;
-      if (takeoff_result == true)
-      {
-        pub::feedback.result = ResultType::res_success;
-      }
-      else
-      {
-        pub::feedback.result = ResultType::res_fail;
-      }
-      feedback_pub.publish(pub::feedback);
+      // float takeoff_x = telemetry.position_velocity_ned().position.north_m;
+      // float takeoff_y = telemetry.position_velocity_ned().position.east_m;
+      // const bool takeoff_result = takeoff(offboard, telemetry, takeoff_x, takeoff_y, 1.5, 0);
+      // pub::feedback.feedback = FeedbackType::fb_takeoff;
+      // if (takeoff_result == true)
+      // {
+      //   pub::feedback.result = ResultType::res_success;
+      // }
+      // else
+      // {
+      //   pub::feedback.result = ResultType::res_fail;
+      // }
+      // feedback_pub.publish(pub::feedback);
     }
     break;
 

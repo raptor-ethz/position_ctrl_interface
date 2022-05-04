@@ -35,4 +35,4 @@ namespace takeoff_params
     const float timeout = 20;
 } // namespace params
 
-bool takeoff(const mavsdk::Offboard &offboard, const mavsdk::Telemetry &telemetry, float altitude, float yaw);
+bool takeoff(const mavsdk::Offboard &offboard, const mavsdk::Telemetry &telemetry, float x, float y, float z, float yaw);
