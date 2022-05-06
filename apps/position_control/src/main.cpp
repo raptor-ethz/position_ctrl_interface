@@ -266,22 +266,36 @@ int main(int argc, char **argv)
         // Blocks until new data is available?
         pos_cmd_sub.listener->wait_for_data_for_ms(200);
 
+        if (sub::pos_cmd.position.x == 0 && sub::pos_cmd.position.y == 0 && sub::pos_cmd.position.z == 0)
+        {
+          std::cout << "Position is (0,0,0). I'll just stay where I am..." << std::endl;
+          position_msg.north_m = telemetry.position_velocity_ned().position.north_m;
+          position_msg.east_m = telemetry.position_velocity_ned().position.east_m;
+          position_msg.down_m = telemetry.position_velocity_ned().position.down_m;
+
+          position_msg.yaw_deg = telemetry.attitude_euler().yaw_deg;
+        }
+        else
+        {
+
+          position_msg.north_m = sub::pos_cmd.position.x + x_offset;
+          position_msg.east_m = sub::pos_cmd.position.y + y_offset;
+          position_msg.down_m =
+              -sub::pos_cmd.position.z; // To account for px4 -z coordinate system
+                                        // (North-East-Down)
+          position_msg.yaw_deg = -sub::pos_cmd.yaw_angle;
+
+          // std::cout << "x:\t" << sub::pos_cmd.position.x << "\t y: \t"
+          //           << sub::pos_cmd.position.y << "\t z: \t"
+          //           << sub::pos_cmd.position.z << std::endl;
+        }
+
         // terminate offboard?
         if (sub::action_cmd.action != Action_cmd::act_offboard)
         {
           break;
         }
 
-        position_msg.north_m = sub::pos_cmd.position.x + x_offset;
-        position_msg.east_m = sub::pos_cmd.position.y + y_offset;
-        position_msg.down_m =
-            -sub::pos_cmd.position.z; // To account for px4 -z coordinate system
-                                      // (North-East-Down)
-        position_msg.yaw_deg = -sub::pos_cmd.yaw_angle;
-
-        std::cout << "x:\t" << sub::pos_cmd.position.x << "\t y: \t"
-                  << sub::pos_cmd.position.y << "\t z: \t"
-                  << sub::pos_cmd.position.z << std::endl;
         offboard.set_position_ned(position_msg);
       }
       offboard_result = offboard.stop();
