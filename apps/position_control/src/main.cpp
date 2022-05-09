@@ -266,9 +266,9 @@ int main(int argc, char **argv)
         // Blocks until new data is available?
         pos_cmd_sub.listener->wait_for_data_for_ms(200);
 
-        if (sub::pos_cmd.position.x == 0 && sub::pos_cmd.position.y == 0 && sub::pos_cmd.position.z == 0)
+        if (sub::pos_cmd.position.x < 0.01 && sub::pos_cmd.position.y < 0.01 && sub::pos_cmd.position.z < 0.01)
         {
-          std::cout << "Position is (0,0,0). I'll just stay where I am..." << std::endl;
+          std::cout << "Position command not feasible (0,0,0). I'll just stay where I am..." << std::endl;
           position_msg.north_m = telemetry.position_velocity_ned().position.north_m;
           position_msg.east_m = telemetry.position_velocity_ned().position.east_m;
           position_msg.down_m = telemetry.position_velocity_ned().position.down_m;
