@@ -265,10 +265,29 @@ int main(int argc, char **argv)
       {
         // Blocks until new data is available?
         pos_cmd_sub.listener->wait_for_data_for_ms(200);
+        std::cout << "going to pos: (" << sub::pos_cmd.position.x << ", " << sub::pos_cmd.position.y << ", " << sub::pos_cmd.position.z << ") " << std::endl;
 
-        if (sub::pos_cmd.position.x < 0.01 && sub::pos_cmd.position.y < 0.01 && sub::pos_cmd.position.z < 0.01)
+        if (sub::pos_cmd.position.x < 0.01 && sub::pos_cmd.position.y < 0.01 && sub::pos_cmd.position.z < 0.01 && sub::pos_cmd.position.x > -0.01 && sub::pos_cmd.position.y > -0.01 && sub::pos_cmd.position.z > -0.01)
         {
-          std::cout << "Position command not feasible (0,0,0). I'll just stay where I am..." << std::endl;
+          std::cout << "Position command not feasible (0,0,0). I'll just stay at (" << telemetry.position_velocity_ned().position.north_m << ", " << telemetry.position_velocity_ned().position.east_m << ", " << -telemetry.position_velocity_ned().position.down_m << ") " << std::endl;
+          position_msg.north_m = telemetry.position_velocity_ned().position.north_m;
+          position_msg.east_m = telemetry.position_velocity_ned().position.east_m;
+          position_msg.down_m = telemetry.position_velocity_ned().position.down_m;
+
+          position_msg.yaw_deg = telemetry.attitude_euler().yaw_deg;
+        }
+        else if (sub::pos_cmd.position.x > -0.501 && sub::pos_cmd.position.y > -0.501 && sub::pos_cmd.position.x < -0.499 && sub::pos_cmd.position.y < -0.499 && sub::pos_cmd.position.z < -1.999 && sub::pos_cmd.position.z > -2.001)
+        {
+          std::cout << "Position command not feasible (0.5,0.5,0). I'll just stay at (" << telemetry.position_velocity_ned().position.north_m << ", " << telemetry.position_velocity_ned().position.east_m << ", " << -telemetry.position_velocity_ned().position.down_m << ") " << std::endl;
+          position_msg.north_m = telemetry.position_velocity_ned().position.north_m;
+          position_msg.east_m = telemetry.position_velocity_ned().position.east_m;
+          position_msg.down_m = telemetry.position_velocity_ned().position.down_m;
+
+          position_msg.yaw_deg = telemetry.attitude_euler().yaw_deg;
+        }
+        else if (sub::pos_cmd.position.z < 0.005)
+        {
+          std::cout << "Position command not feasible (0.5,0.5,0). I'll just stay at (" << telemetry.position_velocity_ned().position.north_m << ", " << telemetry.position_velocity_ned().position.east_m << ", " << -telemetry.position_velocity_ned().position.down_m << ") " << std::endl;
           position_msg.north_m = telemetry.position_velocity_ned().position.north_m;
           position_msg.east_m = telemetry.position_velocity_ned().position.east_m;
           position_msg.down_m = telemetry.position_velocity_ned().position.down_m;
